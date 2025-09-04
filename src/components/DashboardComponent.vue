@@ -6,13 +6,13 @@
         title="Distance cette année"
         :value="`${yearlyDistance.toFixed(0)} km`"
         icon="trend"
-        color="blue"
+        color="strava"
       />
       <StatCard 
         title="Activités ce mois"
         :value="monthlyActivities.toString()"
         icon="chart"
-        color="green"
+        color="strava"
       />
       <StatCard 
         title="Total activités"

@@ -1,11 +1,11 @@
 <template>
   <div class="max-w-2xl mx-auto py-8">
-    <div class="bg-white rounded-xl shadow-lg p-8">
+    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-8">
       <div class="text-center mb-8">
-        <h2 class="text-3xl font-bold text-gray-900 mb-4">
+        <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">
           Configuration Strava API
         </h2>
-        <p class="text-gray-600">
+        <p class="text-gray-600 dark:text-gray-200">
           Configurez vos identifiants Strava pour commencer l'analyse de vos données.
         </p>
       </div>

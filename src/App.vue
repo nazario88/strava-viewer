@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+  <div class="min-h-screen bg-gradient-to-br from-gray-50 to-orange-100 dark:from-gray-900 dark:to-gray-950">
     <!-- Header -->
     <HeaderComponent 
       :is-authenticated="isAuthenticated"
@@ -63,7 +63,7 @@ const accessToken = ref(null)
 const athlete = ref(null)
 const activities = ref([])
 const error = ref(null)
-const isDarkMode = ref(true)
+const isDarkMode = ref(false)
 
 // Configuration Strava
 const stravaConfig = ref({

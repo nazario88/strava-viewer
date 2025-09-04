@@ -41,6 +41,7 @@ defineEmits(['connectToStrava'])
 const features = ref([
   { text: 'Distance totale par année' },
   { text: 'Évolution hebdomadaire' },
-  { text: 'Répartition des activités' }
+  { text: 'Répartition des activités' },
+  { text: 'Tableau d\'intensité' }
 ])
 </script>

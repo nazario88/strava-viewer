@@ -23,19 +23,33 @@
           <!-- Authenticated User Menu -->
           <div v-if="isAuthenticated && athlete" class="flex items-center space-x-4">
             <div class="flex items-center space-x-2">
-              <img 
-                :src="athlete.profile" 
-                :alt="`${athlete.firstname} ${athlete.lastname}`" 
-                class="w-8 h-8 rounded-full"
-              >
+              <!-- Avatar avec image ou initiales -->
+              <div class="relative">
+                <img 
+                  v-if="athlete.profile && athlete.profile !== '' && athlete.profile !== 'avatar/athlete/large.png'"
+                  :src="athlete.profile" 
+                  :alt="`${athlete.firstname} ${athlete.lastname}`" 
+                  class="w-8 h-8 rounded-full object-cover"
+                  @error="onImageError"
+                >
+                <div 
+                  v-else
+                  class="w-8 h-8 rounded-full bg-strava flex items-center justify-center text-white text-sm font-semibold"
+                  :title="`${athlete.firstname} ${athlete.lastname}`"
+                >
+                  {{ getInitials(athlete.firstname, athlete.lastname) }}
+                </div>
+              </div>
               <span class="text-sm font-medium transition-colors" :class="isDarkMode ? 'text-gray-200' : 'text-gray-700'">
                 {{ athlete.firstname }} {{ athlete.lastname }}
               </span>
             </div>
             <button 
               @click="$emit('disconnect')" 
-              class="text-sm transition-colors"
-              :class="isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'"
+              class="px-3 py-1.5 text-sm rounded-md border transition-colors duration-200 hover:shadow-sm"
+              :class="isDarkMode 
+                ? 'text-gray-300 border-gray-600 hover:text-white hover:bg-gray-700 hover:border-gray-500' 
+                : 'text-gray-600 border-gray-300 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-400'"
             >
               Déconnexion
             </button>
@@ -45,8 +59,10 @@
           <div v-else-if="isConfigured" class="flex items-center">
             <button 
               @click="$emit('resetConfiguration')" 
-              class="text-sm transition-colors"
-              :class="isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'"
+              class="px-3 py-1.5 text-sm rounded-md border transition-colors duration-200 hover:shadow-sm"
+              :class="isDarkMode 
+                ? 'text-gray-300 border-gray-600 hover:text-white hover:bg-gray-700 hover:border-gray-500' 
+                : 'text-gray-600 border-gray-300 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-400'"
             >
               Modifier la configuration
             </button>
@@ -58,6 +74,7 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import SunIcon from './icons/SunIcon.vue'
 import MoonIcon from './icons/MoonIcon.vue'
 
@@ -81,4 +98,17 @@ defineProps({
 })
 
 defineEmits(['disconnect', 'resetConfiguration', 'toggleTheme'])
+
+// Fonction pour obtenir les initiales
+const getInitials = (firstname, lastname) => {
+  const first = firstname ? firstname.charAt(0).toUpperCase() : ''
+  const last = lastname ? lastname.charAt(0).toUpperCase() : ''
+  return first + last || 'U' // 'U' pour User par défaut
+}
+
+// Gestion des erreurs d'image
+const onImageError = (event) => {
+  // Cacher l'image en cas d'erreur pour afficher les initiales
+  event.target.style.display = 'none'
+}
 </script>

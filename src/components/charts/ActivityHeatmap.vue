@@ -1,55 +1,51 @@
 <template>
-  <div class="relative">
+  <div class="relative overflow-hidden">
     <!-- En-têtes des mois -->
-    <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-2">
-      <span v-for="month in monthHeaders" :key="month" class="text-center">
-        {{ month }}
-      </span>
+    <div class="flex mb-2">
+      <div class="w-8"></div> <!-- Espace pour les jours -->
+      <div class="flex-1 flex">
+        <div 
+          v-for="(monthData, index) in monthHeaders" 
+          :key="index"
+          class="text-xs text-gray-400 dark:text-gray-500 text-left flex-shrink-0"
+          :style="{ width: `${monthData.weeks * 12}px` }"
+        >
+          {{ monthData.name }}
+        </div>
+      </div>
     </div>
 
     <!-- Grille principale -->
-    <div class="grid grid-cols-53 gap-1">
-      <!-- Ligne des jours de la semaine -->
-      <div class="col-span-1"></div> <!-- Espace vide -->
-      <div v-for="week in 52" :key="week" class="text-xs text-gray-500 text-center">
-        {{ week % 4 === 1 ? dayLabels[Math.floor(week/4) % 7] : '' }}
-      </div>
-      
-      <!-- Grille des activités organisée par semaines -->
-      <template v-for="(week, weekIndex) in organizedWeeks" :key="weekIndex">
-        <!-- Jour de la semaine (lundi, mardi, etc.) -->
-        <div v-if="weekIndex % 7 === 0" class="text-xs text-gray-500 text-right pr-1">
-          {{ dayLabels[Math.floor(weekIndex/7) % 7] }}
+    <div class="flex">
+      <!-- Labels des jours de la semaine - tous affichés -->
+      <div class="w-8 flex flex-col" style="gap: 2px;">
+        <div v-for="day in dayLabels" :key="day" class="text-xs text-gray-400 dark:text-gray-500 flex items-center justify-center pr-1" style="height: 10px;">
+          {{ day }}
         </div>
-        
-        <!-- Cases des jours -->
-        <div 
-          v-for="(day, dayIndex) in week" 
-          :key="`${weekIndex}-${dayIndex}`"
-          class="w-3 h-3 rounded-sm cursor-pointer transition-all duration-200 hover:scale-110"
-          :class="getDayClasses(day)"
-          :title="getDayTooltip(day)"
-        >
-          <!-- Icône d'activité si il y en a une -->
-          <div v-if="day && day.count > 0 && day.activities && day.activities.length > 0" class="w-full h-full flex items-center justify-center">
-            <component :is="getActivityIcon(day.activities[0].type)" class="w-2 h-2 text-white" />
+      </div>
+
+      <!-- Grille des jours - retour à l'approche simple -->
+      <div class="flex-1">
+        <div class="flex flex-col" style="gap: 2px;">
+          <div v-for="dayOfWeek in 7" :key="dayOfWeek" class="flex" style="gap: 2px;">
+            <div 
+              v-for="(week, weekIndex) in weeklyData" 
+              :key="weekIndex"
+              class="rounded-sm cursor-pointer transition-all duration-200 hover:scale-125 flex-shrink-0"
+              :class="getDayClasses(week[dayOfWeek - 1])"
+              :title="getDayTooltip(week[dayOfWeek - 1])"
+              style="width: 10px; height: 10px;"
+            >
+              <!-- Icône d'activité -->
+              <div v-if="week[dayOfWeek - 1] && week[dayOfWeek - 1].count > 0" class="w-full h-full flex items-center justify-center">
+                <component :is="getActivityIcon(week[dayOfWeek - 1].activities[0]?.type)" style="width: 6px; height: 6px;" class="text-white" />
+              </div>
+            </div>
           </div>
         </div>
-      </template>
-    </div>
-    
-    <!-- Légende -->
-    <div class="flex items-center justify-between mt-4 text-xs text-gray-500 dark:text-gray-400">
-      <span>Moins</span>
-      <div class="flex items-center space-x-1">
-        <div class="w-3 h-3 bg-gray-200 dark:bg-gray-700 rounded-sm"></div>
-        <div class="w-3 h-3 bg-green-200 rounded-sm"></div>
-        <div class="w-3 h-3 bg-green-400 rounded-sm"></div>
-        <div class="w-3 h-3 bg-green-600 rounded-sm"></div>
-        <div class="w-3 h-3 bg-green-800 rounded-sm"></div>
       </div>
-      <span>Plus</span>
     </div>
+
   </div>
 </template>
 
@@ -69,7 +65,7 @@ const props = defineProps({
 })
 
 const dayLabels = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
-const monthHeaders = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
+const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
 
 const activityIcons = {
   'Run': RunIcon,
@@ -82,39 +78,67 @@ const activityIcons = {
   'Workout': GenericIcon
 }
 
-// Organiser les données en semaines pour un affichage correct
-const organizedWeeks = computed(() => {
-  if (!props.yearlyActivities || props.yearlyActivities.length === 0) return []
+// Données des 12 derniers mois (52 semaines exactement)
+const weeklyData = computed(() => {
+  if (!props.yearlyActivities || props.yearlyActivities.length === 0) {
+    return Array(52).fill().map(() => Array(7).fill(null))
+  }
   
   const weeks = []
-  const currentYear = new Date().getFullYear()
+  const today = new Date()
   
-  // Commencer au premier lundi de l'année
-  const firstDay = new Date(currentYear, 0, 1)
-  const firstMonday = new Date(firstDay)
-  const dayOfWeek = firstDay.getDay()
-  const daysToMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek
-  firstMonday.setDate(firstDay.getDate() + daysToMonday)
+  // Commencer il y a exactement 52 semaines
+  const startDate = new Date(today)
+  startDate.setDate(today.getDate() - (51 * 7)) // 52 semaines = 51 semaines + cette semaine
   
-  // Créer 53 semaines de 7 jours
-  for (let week = 0; week < 53; week++) {
-    const weekDays = []
+  // Aller au dimanche précédent
+  const dayOfWeek = startDate.getDay()
+  if (dayOfWeek !== 0) {
+    startDate.setDate(startDate.getDate() - dayOfWeek)
+  }
+  
+  // Créer exactement 52 semaines
+  let currentDate = new Date(startDate)
+  
+  for (let weekIndex = 0; weekIndex < 52; weekIndex++) {
+    const week = []
+    
     for (let day = 0; day < 7; day++) {
-      const currentDate = new Date(firstMonday)
-      currentDate.setDate(firstMonday.getDate() + (week * 7) + day)
+      const dayDate = new Date(currentDate)
+      dayDate.setDate(currentDate.getDate() + day)
       
-      if (currentDate.getFullYear() === currentYear) {
-        const dateStr = currentDate.toISOString().split('T')[0]
+      if (dayDate <= today) {
+        const dateStr = dayDate.toISOString().split('T')[0]
         const dayData = props.yearlyActivities.find(activity => activity.date === dateStr)
-        weekDays.push(dayData || { date: dateStr, count: 0, activities: [] })
+        week.push(dayData || { date: dateStr, count: 0, activities: [] })
       } else {
-        weekDays.push(null) // Jour hors de l'année courante
+        week.push(null)
       }
     }
-    weeks.push(weekDays)
+    
+    weeks.push(week)
+    currentDate.setDate(currentDate.getDate() + 7)
   }
   
   return weeks
+})
+
+// En-têtes simplifiés
+const monthHeaders = computed(() => {
+  return [
+    { name: 'Oct', weeks: 4 },
+    { name: 'Nov', weeks: 4 },
+    { name: 'Déc', weeks: 5 },
+    { name: 'Jan', weeks: 4 },
+    { name: 'Fév', weeks: 4 },
+    { name: 'Mar', weeks: 4 },
+    { name: 'Avr', weeks: 5 },
+    { name: 'Mai', weeks: 4 },
+    { name: 'Jun', weeks: 4 },
+    { name: 'Jul', weeks: 5 },
+    { name: 'Aoû', weeks: 4 },
+    { name: 'Sep', weeks: 4 }
+  ]
 })
 
 const getActivityIcon = (activityType) => {
@@ -122,23 +146,12 @@ const getActivityIcon = (activityType) => {
 }
 
 const getDayClasses = (day) => {
-  if (!day) return 'opacity-25' // Jours hors année
-  
-  const baseClasses = 'border border-gray-300 dark:border-gray-600'
+  if (!day) return 'bg-gray-100 dark:bg-gray-800 opacity-30'
   
   if (day.count === 0) {
-    return `${baseClasses} bg-gray-200 dark:bg-gray-700`
-  }
-  
-  // Intensité basée sur le nombre d'activités
-  if (day.count === 1) {
-    return `${baseClasses} bg-green-200 hover:bg-green-300`
-  } else if (day.count === 2) {
-    return `${baseClasses} bg-green-400 hover:bg-green-500`
-  } else if (day.count === 3) {
-    return `${baseClasses} bg-green-600 hover:bg-green-700`
+    return 'bg-gray-200 dark:bg-gray-700'
   } else {
-    return `${baseClasses} bg-green-800 hover:bg-green-900`
+    return 'bg-strava hover:bg-orange-600'
   }
 }
 

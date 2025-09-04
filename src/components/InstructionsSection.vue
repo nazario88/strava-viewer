@@ -1,10 +1,10 @@
 <template>
-  <div class="mt-8 p-6 bg-gray-50 rounded-lg">
-    <h3 class="text-lg font-semibold text-gray-900 mb-4">
+  <div class="mt-8 p-6 bg-gray-50 dark:bg-gray-950 rounded-lg">
+    <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4">
       📋 Comment obtenir vos identifiants Strava ?
     </h3>
     
-    <div class="space-y-4 text-sm text-gray-700">
+    <div class="space-y-4 text-sm text-gray-600 dark:text-gray-200">
       <div class="flex items-start">
         <span class="inline-flex items-center justify-center w-6 h-6 bg-strava text-white text-xs font-semibold rounded-full mr-3 mt-0.5">
           1
@@ -31,7 +31,7 @@
         </span>
         <div>
           <p class="font-medium">Créer votre App</p>
-          <p>Cliquez sur "Create & Manage Your App" puis remplissez :</p>
+          <p>Cliquez sur <strong>Créer </strong>"Create & Manage Your App" puis remplissez :</p>
           <ul class="list-disc list-inside ml-4 mt-2 space-y-1">
             <li><strong>Application Name:</strong> Un nom pour votre app (ex: "Mon Dashboard")</li>
             <li><strong>Category:</strong> Choisissez "Data Importer"</li>

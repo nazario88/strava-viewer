@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center text-sm text-gray-600">
+  <div class="flex items-center  text-gray-900 dark:text-gray-200">
     <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
       <path 
         fill-rule="evenodd" 

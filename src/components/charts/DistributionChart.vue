@@ -88,6 +88,7 @@ const createChart = async () => {
                     fillStyle: dataset.backgroundColor[i],
                     strokeStyle: dataset.borderColor,
                     lineWidth: dataset.borderWidth,
+                    fontColor: '#6B7280',
                     hidden: false,
                     index: i
                   }

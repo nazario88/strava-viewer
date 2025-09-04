@@ -49,8 +49,8 @@ const iconComponent = computed(() => {
 const iconClasses = computed(() => {
   const baseClasses = 'p-2 rounded-lg'
   const colorClasses = {
-    'blue': 'bg-blue-100 text-blue-600',
-    'green': 'bg-green-100 text-green-600',
+    //'blue': 'bg-blue-100 text-blue-600',
+    //'green': 'bg-green-100 text-green-600',
     'strava': 'bg-strava/10 text-strava'
   }
   return `${baseClasses} ${colorClasses[props.color] || colorClasses.blue}`
