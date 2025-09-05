@@ -33,6 +33,12 @@
         :monthly-distances="monthlyDistances" 
         :yearly-activities="yearlyActivities"
       />
+
+      <div class="text-gray-700 py-4 text-center text-sm">
+        <p>
+          We do not store any Strava data. For any questions, contact us at hello at dailyheroes.io.
+        </p>
+      </div>
     </main>
   </div>
 </template>
