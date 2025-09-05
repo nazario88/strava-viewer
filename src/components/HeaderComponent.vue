@@ -55,18 +55,6 @@
             </button>
           </div>
           
-          <!-- Configuration Menu -->
-          <div v-else-if="isConfigured" class="flex items-center">
-            <button 
-              @click="$emit('resetConfiguration')" 
-              class="px-3 py-1.5 text-sm rounded-md border transition-colors duration-200 hover:shadow-sm"
-              :class="isDarkMode 
-                ? 'text-gray-300 border-gray-600 hover:text-white hover:bg-gray-700 hover:border-gray-500' 
-                : 'text-gray-600 border-gray-300 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-400'"
-            >
-              Modifier la configuration
-            </button>
-          </div>
         </div>
       </div>
     </div>
@@ -83,10 +71,6 @@ defineProps({
     type: Boolean,
     default: false
   },
-  isConfigured: {
-    type: Boolean,
-    default: false
-  },
   athlete: {
     type: Object,
     default: null
@@ -97,7 +81,7 @@ defineProps({
   }
 })
 
-defineEmits(['disconnect', 'resetConfiguration', 'toggleTheme'])
+defineEmits(['disconnect', 'toggleTheme'])
 
 // Fonction pour obtenir les initiales
 const getInitials = (firstname, lastname) => {

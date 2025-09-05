@@ -3,11 +3,9 @@
     <!-- Header -->
     <HeaderComponent 
       :is-authenticated="isAuthenticated"
-      :is-configured="isConfigured"
       :athlete="athlete"
       :is-dark-mode="isDarkMode"
       @disconnect="disconnect"
-      @reset-configuration="resetConfiguration"
       @toggle-theme="toggleTheme"
     />
 
@@ -17,14 +15,7 @@
       <ErrorComponent v-if="error" :error="error" />
 
       <!-- Loading Spinner -->
-      <LoadingComponent v-if="isLoading" />
-
-      <!-- Configuration Form -->
-      <ConfigurationForm 
-        v-else-if="!isConfigured"
-        :strava-config="stravaConfig"
-        @save-configuration="saveConfiguration"
-      />
+      <LoadingComponent v-else-if="isLoading" />
 
       <!-- Authorization Page -->
       <AuthorizationPage 
@@ -39,7 +30,7 @@
         :monthly-activities="monthlyActivities"
         :activity-distribution="activityDistribution"
         :weekly-distances="weeklyDistances"
-        :monthly-distances="monthlyDistances"
+        :monthly-distances="monthlyDistances" 
         :yearly-activities="yearlyActivities"
       />
     </main>
@@ -51,12 +42,10 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 import HeaderComponent from './components/HeaderComponent.vue'
 import ErrorComponent from './components/ErrorComponent.vue'
 import LoadingComponent from './components/LoadingComponent.vue'
-import ConfigurationForm from './components/ConfigurationForm.vue'
 import AuthorizationPage from './components/AuthorizationPage.vue'
 import DashboardComponent from './components/DashboardComponent.vue'
 
 // État de l'application
-const isConfigured = ref(false)
 const isAuthenticated = ref(false)
 const isLoading = ref(false)
 const accessToken = ref(null)
@@ -66,10 +55,7 @@ const error = ref(null)
 const isDarkMode = ref(false)
 
 // Configuration Strava
-const stravaConfig = ref({
-  clientId: '',
-  clientSecret: ''
-})
+const STRAVA_CLIENT_ID = import.meta.env.VITE_STRAVA_CLIENT_ID
 
 // Données pour les graphiques
 const yearlyDistance = ref(0)
@@ -80,55 +66,19 @@ const yearlyActivities = ref([])
 const activityDistribution = ref({})
 
 // URLs dynamiques
-const redirectUri = window.location.origin + window.location.pathname
-const stravaAuthUrl = computed(() => 
-  `https://www.strava.com/oauth/authorize?client_id=${stravaConfig.value.clientId}&response_type=code&redirect_uri=${redirectUri}&approval_prompt=force&scope=read,activity:read_all`
-)
-
-// Sauvegarder la configuration
-const saveConfiguration = () => {
-  if (!stravaConfig.value.clientId.trim() || !stravaConfig.value.clientSecret.trim()) {
-    error.value = 'Veuillez remplir tous les champs de configuration.'
-    return
-  }
-  
-  localStorage.setItem('strava_config', JSON.stringify(stravaConfig.value))
-  isConfigured.value = true
-  error.value = null
-}
-
-// Charger la configuration sauvegardée
-const loadSavedConfiguration = () => {
-  const savedConfig = localStorage.getItem('strava_config')
-  if (savedConfig) {
-    stravaConfig.value = JSON.parse(savedConfig)
-    isConfigured.value = true
-  }
-}
-
-// Réinitialiser la configuration
-const resetConfiguration = () => {
-  localStorage.removeItem('strava_config')
-  localStorage.removeItem('strava_access_token')
-  stravaConfig.value = { clientId: '', clientSecret: '' }
-  isConfigured.value = false
-  isAuthenticated.value = false
-  accessToken.value = null
-  athlete.value = null
-  activities.value = []
-}
+//const stravaAuthUrl = `https://www.strava.com/oauth/authorize?client_id=${STRAVA_CLIENT_ID}&response_type=code&redirect_uri=${redirectUri}&approval_prompt=force&scope=read,activity:read_all`
+const redirectUri = 'https://strava.dailyheroes.io'
+const stravaAuthUrl = `https://www.strava.com/oauth/authorize?client_id=${STRAVA_CLIENT_ID}&response_type=code&redirect_uri=${redirectUri}&approval_prompt=force&scope=read,activity:read_all`
 
 // Vérifier si on revient de l'auth Strava
 const checkAuthCallback = async () => {
   const urlParams = new URLSearchParams(window.location.search)
   const code = urlParams.get('code')
   
-  if (code && isConfigured.value) {
+  if (code) {
     await exchangeCodeForToken(code)
-    // Nettoyer l'URL
     window.history.replaceState({}, document.title, window.location.pathname)
-  } else if (isConfigured.value) {
-    // Vérifier si on a déjà un token en localStorage
+  } else {
     const savedToken = localStorage.getItem('strava_access_token')
     if (savedToken) {
       accessToken.value = savedToken
@@ -143,16 +93,13 @@ const exchangeCodeForToken = async (code) => {
   error.value = null
 
   try {
-    const response = await fetch('https://www.strava.com/oauth/token', {
+    const response = await fetch('/api/auth.php', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        client_id: stravaConfig.value.clientId,
-        client_secret: stravaConfig.value.clientSecret,
-        code: code,
-        grant_type: 'authorization_code'
+        code: code
       })
     })
 
@@ -236,7 +183,8 @@ const calculateStatistics = () => {
 
 // Se connecter à Strava
 const connectToStrava = () => {
-  window.location.href = stravaAuthUrl.value
+  //window.location.href = stravaAuthUrl.value
+  window.location.href = stravaAuthUrl
 }
 
 // Se déconnecter
@@ -246,6 +194,12 @@ const disconnect = () => {
   isAuthenticated.value = false
   athlete.value = null
   activities.value = []
+  yearlyDistance.value = 0
+  monthlyActivities.value = 0
+  weeklyDistances.value = []
+  monthlyDistances.value = []
+  yearlyActivities.value = []
+  activityDistribution.value = {}
 }
 
 // Gestion du thème
@@ -352,9 +306,6 @@ const calculateYearlyActivities = () => {
 // Initialisation
 onMounted(() => {
   loadThemePreference()
-  loadSavedConfiguration()
-  if (isConfigured.value) {
-    checkAuthCallback()
-  }
+  checkAuthCallback()
 })
 </script>
