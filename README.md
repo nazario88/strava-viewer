@@ -39,3 +39,26 @@ Connectez-vous avec votre compte Strava et explorez vos données immédiatement 
 - Node.js 18+ et npm
 - Serveur web avec PHP 7.4+
 - Compte développeur Strava
+
+### Créer une application Strava
+
+1. Rendez-vous sur [https://www.strava.com/settings/api](https://www.strava.com/settings/api)
+2. Cliquez sur "Create & Manage Your App"
+3. Remplissez les informations :
+  - **Application Name** : "Mon Dashboard Strava"
+  - **Category** : "Data Importer"
+  - **Website** : `https://votre-domaine.com`
+  - **Authorization Callback Domain** : `votre-domaine.com`
+4. Notez votre **Client ID** et **Client Secret**
+
+### Configuration backend PHP
+
+Modifiez le fichier `api/config.php` avec vos credentials Strava obtenus à l'étape précédente.
+
+### Configuration frontend
+
+Créez le fichier `.env` à la racine du projet avec vos identifiants :
+
+```env
+VITE_STRAVA_CLIENT_ID=VOTRE_CLIENT_ID
+VITE_STRAVA_CLIENT_SECRET=VOTRE_CLIENT_SECRET
