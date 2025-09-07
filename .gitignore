@@ -30,4 +30,5 @@ coverage
 *.tsbuildinfo
 
 # fichiers sensibles PHP
-#/api/config.php
+/api/config.php
+api/config.php
