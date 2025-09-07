@@ -1,29 +1,41 @@
-# strava-viewer
+# Strava Viewer (Analytics Dashboard)
 
-This template should help get you started developing with Vue 3 in Vite.
+Une application web moderne pour analyser vos données Strava avec des graphiques interactifs et une heatmap d'activités.
 
-## Recommended IDE Setup
+## 🚀 Démo en ligne
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+**Essayez directement :** [https://strava.dailyheroes.io](https://strava.dailyheroes.io)
 
-## Customize configuration
+Connectez-vous avec votre compte Strava et explorez vos données immédiatement !
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+## ✨ Fonctionnalités
 
-## Project Setup
+### 📊 **Graphiques et métriques**
+- **Distance totale** sur l'année en cours
+- **Nombre d'activités** du mois courant  
+- **Graphique linéaire** : Distance par semaine (12 dernières semaines)
+- **Histogramme** : Distance mensuelle (12 derniers mois)
+- **Graphique donut** : Répartition par type d'activité
+- **Heatmap GitHub-style** : Activités de l'année avec icônes par sport
 
-```sh
-npm install
-```
+### 🎨 **Interface moderne**
+- **Mode sombre/clair** avec toggle automatique
+- **Design responsive** : Optimisé mobile et desktop
+- **Heatmap adaptative** : Vue complète sur desktop, 2 blocs semestriels sur mobile
+- **Animations fluides** avec Chart.js
+- **Icônes d'activités** : Course 🏃‍♂️, Vélo 🚴‍♂️, Natation 🏊‍♂️, etc.
 
-### Compile and Hot-Reload for Development
+## 🛠️ Technologies utilisées
 
-```sh
-npm run dev
-```
+- **Frontend** : Vue.js 3 (Composition API), Vite, Tailwind CSS
+- **Charts** : Chart.js
+- **Backend** : PHP (endpoint OAuth sécurisé)
+- **API** : Strava API v3
 
-### Compile and Minify for Production
+## 🏗️ Installation pour auto-hébergement
 
-```sh
-npm run build
-```
+### Prérequis
+
+- Node.js 18+ et npm
+- Serveur web avec PHP 7.4+
+- Compte développeur Strava
