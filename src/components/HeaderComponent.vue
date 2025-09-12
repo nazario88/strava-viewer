@@ -73,6 +73,16 @@
             </button>
           </div>
           
+          <!-- No auth - Just Theme Toggle -->
+          <button 
+            @click="$emit('toggleTheme')" 
+            class="p-2 rounded-lg transition-colors"
+            :class="isDarkMode ? 'text-gray-300 hover:text-white hover:bg-gray-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'"
+            title="Changer de thème"
+          >
+            <SunIcon v-if="isDarkMode" class="w-5 h-5" />
+            <MoonIcon v-else class="w-5 h-5" />
+          </button>
         </div>
       </div>
     </div>

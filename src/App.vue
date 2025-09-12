@@ -34,18 +34,17 @@
         :yearly-activities="yearlyActivities"
       />
 
-      <div class="text-gray-700 py-4 text-center text-sm">
-        <p>
-          We do not store any Strava data. For any questions, contact us at hello at dailyheroes.io.
-        </p>
-      </div>
     </main>
+
+    <!-- Footer -->
+    <FooterComponent></FooterComponent>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
 import HeaderComponent from './components/HeaderComponent.vue'
+import FooterComponent from './components/FooterComponent.vue'
 import ErrorComponent from './components/ErrorComponent.vue'
 import LoadingComponent from './components/LoadingComponent.vue'
 import AuthorizationPage from './components/AuthorizationPage.vue'
@@ -150,6 +149,7 @@ const loadUserData = async () => {
     calculateStatistics()
   } catch (err) {
     error.value = 'Erreur lors du chargement des données: ' + err.message
+    setTimeout(disconnect(), 3000)
   } finally {
     isLoading.value = false
   }
