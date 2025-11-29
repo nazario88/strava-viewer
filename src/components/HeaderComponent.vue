@@ -4,8 +4,8 @@
       <div class="flex justify-between items-center h-16">
         <div class="flex items-center min-w-0 flex-1">
           <div class="flex flex-col sm:flex-row sm:items-center sm:gap-3">
-            <h1 class="text-lg sm:text-2xl font-bold transition-colors" :class="isDarkMode ? 'text-white' : 'text-gray-900'">
-              Strava Analytics
+            <h1 class="flex items-center text-lg sm:text-2xl font-bold transition-colors" :class="isDarkMode ? 'text-white' : 'text-gray-900'">
+              <img src="/analytics.png" alt="Visualisation de statistiques" /> Strava Analytics
             </h1>
             <a 
               href="https://dailyheroes.io" 
@@ -74,7 +74,7 @@
           </div>
           
           <!-- No auth - Just Theme Toggle -->
-          <button 
+          <button v-else
             @click="$emit('toggleTheme')" 
             class="p-2 rounded-lg transition-colors"
             :class="isDarkMode ? 'text-gray-300 hover:text-white hover:bg-gray-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'"

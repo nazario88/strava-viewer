@@ -90,16 +90,8 @@
         <div class="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
           <div class="flex items-center space-x-2">
             <span class="text-sm text-gray-500 dark:text-gray-400 transition-colors">
-              Créé avec ❤️ par l'équipe 
+              Créé avec ❤️ par <a href="https://innospira.fr" class="hover:text-strava transition-colors">Jérémie G.</a>
             </span>
-            <a 
-              href="https://dailyheroes.io" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              class="text-sm font-semibold text-white hover:text-strava transition-colors"
-            >
-              DailyHeroes
-            </a>
           </div>
           
           <div class="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
