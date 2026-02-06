@@ -1,0 +1,9 @@
+RewriteEngine On
+
+# Supprimer le www pour strava.dailyheroes.io
+RewriteCond %{HTTP_HOST} ^www\.strava\.dailyheroes\.io$ [NC]
+RewriteRule ^(.*)$ https://strava.dailyheroes.io/$1 [L,R=301]
+
+# Forcer HTTPS
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
