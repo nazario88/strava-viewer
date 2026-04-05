@@ -54,11 +54,3 @@ Connectez-vous avec votre compte Strava et explorez vos données immédiatement 
 ### Configuration backend PHP
 
 Modifiez le fichier `api/config.php` avec vos credentials Strava obtenus à l'étape précédente.
-
-### Configuration frontend
-
-Créez le fichier `.env` à la racine du projet avec vos identifiants :
-
-```env
-VITE_STRAVA_CLIENT_ID=VOTRE_CLIENT_ID
-VITE_STRAVA_CLIENT_SECRET=VOTRE_CLIENT_SECRET
