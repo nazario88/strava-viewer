@@ -1,108 +1,81 @@
 <template>
-  <div class="relative overflow-hidden">
-    <!-- 2 blocs semestriels -->
-    <div class="space-y-6">
-      <!-- Premier semestre -->
-      <div>
-        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 text-center">{{ firstSemesterTitle }}</h4>
-        <div class="flex mb-2">
-          <div class="w-8"></div>
-          <div class="flex-1 flex">
-            <div 
-              v-for="(monthData, index) in firstSemesterHeaders" 
-              :key="index"
-              class="text-xs text-gray-400 dark:text-gray-500 text-left flex-shrink-0"
-              :style="{ width: `${monthData.weeks * 16}px` }"
-            >
-              {{ monthData.name }}
-            </div>
+  <div class="w-full">
+    <!-- Grille 6 mois : 3×2 desktop, 2×3 tablette, 1×6 mobile -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+      <div
+        v-for="month in calendarMonths"
+        :key="month.key"
+        class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3"
+      >
+        <!-- En-tête du mois -->
+        <div class="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-2 text-center">
+          {{ month.label }}
+        </div>
+
+        <!-- Jours de la semaine -->
+        <div class="grid grid-cols-7 mb-1">
+          <div
+            v-for="d in DAY_LABELS"
+            :key="d"
+            class="text-center text-gray-400 dark:text-gray-500"
+            style="font-size: 9px; line-height: 16px;"
+          >
+            {{ d }}
           </div>
         </div>
 
-        <div class="flex">
-          <div class="w-8 flex flex-col" style="gap: 3px;">
-            <div v-for="day in dayLabels" :key="day" class="text-xs text-gray-400 dark:text-gray-500 flex items-center justify-center pr-1" style="height: 14px;">
-              {{ day }}
-            </div>
-          </div>
+        <!-- Cases du calendrier -->
+        <div class="grid grid-cols-7" style="gap: 3px;">
+          <!-- Décalage du premier jour (lundi = 0) -->
+          <div
+            v-for="n in month.startOffset"
+            :key="`offset-${month.key}-${n}`"
+            style="height: 16px;"
+          />
 
-          <div class="flex-1">
-            <div class="flex flex-col" style="gap: 3px;">
-              <div v-for="dayOfWeek in 7" :key="dayOfWeek" class="flex" style="gap: 3px;">
-                <div 
-                  v-for="(week, weekIndex) in firstSemesterData" 
-                  :key="weekIndex"
-                  class="rounded-sm cursor-pointer transition-all duration-200 hover:scale-110 flex-shrink-0"
-                  :class="getDayClasses(week[dayOfWeek - 1])"
-                  :title="getDayTooltip(week[dayOfWeek - 1])"
-                  style="width: 14px; height: 14px;"
-                >
-                  <div v-if="week[dayOfWeek - 1] && week[dayOfWeek - 1].count > 0" class="w-full h-full flex items-center justify-center">
-                    <component :is="getActivityIcon(week[dayOfWeek - 1].activities[0]?.type)" style="width: 8px; height: 8px;" class="text-white" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Second semestre -->
-      <div>
-        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 text-center">{{ secondSemesterTitle  }}</h4>
-        <div class="flex mb-2">
-          <div class="w-8"></div>
-          <div class="flex-1 flex">
-            <div 
-              v-for="(monthData, index) in secondSemesterHeaders" 
-              :key="index"
-              class="text-xs text-gray-400 dark:text-gray-500 text-left flex-shrink-0"
-              :style="{ width: `${monthData.weeks * 16}px` }"
-            >
-              {{ monthData.name }}
-            </div>
-          </div>
-        </div>
-
-        <div class="flex">
-          <div class="w-8 flex flex-col" style="gap: 3px;">
-            <div v-for="day in dayLabels" :key="day" class="text-xs text-gray-400 dark:text-gray-500 flex items-center justify-center pr-1" style="height: 14px;">
-              {{ day }}
-            </div>
-          </div>
-
-          <div class="flex-1">
-            <div class="flex flex-col" style="gap: 3px;">
-              <div v-for="dayOfWeek in 7" :key="dayOfWeek" class="flex" style="gap: 3px;">
-                <div 
-                  v-for="(week, weekIndex) in secondSemesterData" 
-                  :key="weekIndex"
-                  class="rounded-sm cursor-pointer transition-all duration-200 hover:scale-110 flex-shrink-0"
-                  :class="getDayClasses(week[dayOfWeek - 1])"
-                  :title="getDayTooltip(week[dayOfWeek - 1])"
-                  style="width: 14px; height: 14px;"
-                >
-                  <div v-if="week[dayOfWeek - 1] && week[dayOfWeek - 1].count > 0" class="w-full h-full flex items-center justify-center">
-                    <component :is="getActivityIcon(week[dayOfWeek - 1].activities[0]?.type)" style="width: 8px; height: 8px;" class="text-white" />
-                  </div>
-                </div>
-              </div>
-            </div>
+          <!-- Jours du mois -->
+          <div
+            v-for="day in month.days"
+            :key="day.date"
+            class="rounded-sm cursor-default transition-transform duration-100 hover:scale-125 relative flex items-center justify-center"
+            :class="day.count === 0 ? 'bg-gray-200 dark:bg-gray-600' : ''"
+            :style="day.count > 0 ? { backgroundColor: getActivityColor(day.mainType) } : {}"
+            :title="getDayTooltip(day)"
+            style="height: 16px;"
+          >
+            <!-- Point blanc discret si activité -->
+            <div
+              v-if="day.count > 0"
+              class="rounded-full bg-white"
+              style="width: 4px; height: 4px; opacity: 0.7;"
+            />
           </div>
         </div>
       </div>
     </div>
 
+    <!-- Légende -->
+    <div class="flex items-center justify-center gap-3 mt-4 flex-wrap">
+      <div class="flex items-center gap-1.5">
+        <div class="w-3 h-3 rounded-sm bg-gray-200 dark:bg-gray-600"></div>
+        <span class="text-xs text-gray-400 dark:text-gray-500">Aucune activité</span>
+      </div>
+      <div
+        v-for="item in legendItems"
+        :key="item.type"
+        class="flex items-center gap-1.5"
+      >
+        <div class="w-3 h-3 rounded-sm flex items-center justify-center" :style="{ backgroundColor: item.color }">
+          <div class="rounded-full bg-white" style="width: 4px; height: 4px; opacity: 0.7;"/>
+        </div>
+        <span class="text-xs text-gray-500 dark:text-gray-400">{{ item.label }}</span>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import RunIcon from '../icons/activities/RunIcon.vue'
-import BikeIcon from '../icons/activities/BikeIcon.vue'
-import SwimIcon from '../icons/activities/SwimIcon.vue'
-import HikeIcon from '../icons/activities/HikeIcon.vue'
-import GenericIcon from '../icons/activities/GenericIcon.vue'
 
 const props = defineProps({
   yearlyActivities: {
@@ -111,221 +84,142 @@ const props = defineProps({
   }
 })
 
-const dayLabels = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+const DAY_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
 
-const activityIcons = {
-  'Run': RunIcon,
-  'Ride': BikeIcon,
-  'VirtualRide': BikeIcon,
-  'Swim': SwimIcon,
-  'Hike': HikeIcon,
-  'Walk': HikeIcon,
-  'WeightTraining': GenericIcon,
-  'Workout': GenericIcon
+const ACTIVITY_COLORS = {
+  'Run':              '#FC4C02',
+  'TrailRun':         '#E03D00',
+  'VirtualRun':       '#FF6B35',
+  'Ride':             '#22C55E',
+  'VirtualRide':      '#16A34A',
+  'MountainBikeRide': '#15803D',
+  'GravelRide':       '#4ADE80',
+  'Swim':             '#02B1FC',
+  'OpenWaterSwim':    '#0284C7',
+  'Walk':             '#A78BFA',
+  'Hike':             '#7C3AED',
+  'WeightTraining':   '#F59E0B',
+  'Workout':          '#D97706',
+  'Yoga':             '#FCD34D',
+  'default':          '#9CA3AF'
 }
 
-// Données des 12 derniers mois (52 semaines exactement)
-const weeklyData = computed(() => {
-  if (!props.yearlyActivities || props.yearlyActivities.length === 0) {
-    return Array(52).fill().map(() => Array(7).fill(null))
-  }
-  
-  const weeks = []
+const ACTIVITY_LABELS = {
+  'Run':              'Course',
+  'TrailRun':         'Trail',
+  'VirtualRun':       'Course virtuelle',
+  'Ride':             'Vélo',
+  'VirtualRide':      'Vélo virtuel',
+  'MountainBikeRide': 'VTT',
+  'GravelRide':       'Gravel',
+  'Swim':             'Natation',
+  'OpenWaterSwim':    'Nage en eau libre',
+  'Walk':             'Marche',
+  'Hike':             'Randonnée',
+  'WeightTraining':   'Musculation',
+  'Workout':          'Entraînement',
+  'Yoga':             'Yoga',
+}
+
+const MONTH_NAMES = [
+  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+]
+
+// Index date → activité pour lookup O(1)
+const activitiesIndex = computed(() => {
+  const index = {}
+  props.yearlyActivities?.forEach(a => { index[a.date] = a })
+  return index
+})
+
+// 6 mois glissants (du plus ancien au plus récent)
+const calendarMonths = computed(() => {
   const today = new Date()
-  
-  const startDate = new Date(today)
-  startDate.setDate(today.getDate() - (51 * 7))
-  
-  const dayOfWeek = startDate.getDay()
-  if (dayOfWeek !== 0) {
-    startDate.setDate(startDate.getDate() - dayOfWeek)
-  }
-  
-  let currentDate = new Date(startDate)
-  
-  for (let weekIndex = 0; weekIndex < 52; weekIndex++) {
-    const week = []
-    
-    for (let day = 0; day < 7; day++) {
-      const dayDate = new Date(currentDate)
-      dayDate.setDate(currentDate.getDate() + day)
-      
-      if (dayDate <= today) {
-        const dateStr = dayDate.toISOString().split('T')[0]
-        const dayData = props.yearlyActivities.find(activity => activity.date === dateStr)
-        week.push(dayData || { date: dateStr, count: 0, activities: [] })
-      } else {
-        week.push(null)
-      }
+  today.setHours(23, 59, 59, 999)
+  const months = []
+  const currentYear = new Date().getFullYear()
+
+  for (let i = 5; i >= 0; i--) {
+    const refDate = new Date(today.getFullYear(), today.getMonth() - i, 1)
+    const year = refDate.getFullYear()
+    const month = refDate.getMonth()
+
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+
+    // Offset lundi=0 : (getDay() + 6) % 7
+    const firstDay = new Date(year, month, 1)
+    const startOffset = (firstDay.getDay() + 6) % 7
+
+    const days = []
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dayDate = new Date(year, month, d, 12)
+      if (dayDate > today) break
+
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      const activityData = activitiesIndex.value[dateStr]
+      const mainType = activityData?.activities?.[0]?.type || null
+
+      days.push({
+        date: dateStr,
+        day: d,
+        count: activityData?.count || 0,
+        activities: activityData?.activities || [],
+        mainType
+      })
     }
-    
-    weeks.push(week)
-    currentDate.setDate(currentDate.getDate() + 7)
-  }
-  
-  return weeks
-})
 
-// Premier semestre (semaines 0-25)
-const firstSemesterData = computed(() => {
-  return weeklyData.value.slice(0, 26)
-})
-
-// Second semestre (semaines 26-51)  
-const secondSemesterData = computed(() => {
-  return weeklyData.value.slice(26, 52)
-})
-
-const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
-
-// En-têtes dynamiques basées sur les vraies semaines
-const firstSemesterHeaders = computed(() => {
-  if (!weeklyData.value || weeklyData.value.length === 0) return []
-  
-  const headers = []
-  let currentMonth = null
-  let weekCount = 0
-  
-  // Analyser les 26 premières semaines
-  for (let weekIndex = 0; weekIndex < 26 && weekIndex < weeklyData.value.length; weekIndex++) {
-    const week = weeklyData.value[weekIndex]
-    const firstDayOfWeek = week.find(day => day && day.date)
-    
-    if (firstDayOfWeek) {
-      const date = new Date(firstDayOfWeek.date)
-      const month = date.getMonth()
-      
-      if (currentMonth !== month) {
-        if (currentMonth !== null && weekCount > 0) {
-          headers.push({
-            name: monthNames[currentMonth],
-            weeks: weekCount
-          })
-        }
-        currentMonth = month
-        weekCount = 1
-      } else {
-        weekCount++
-      }
-    }
-  }
-  
-  // Ajouter le dernier mois
-  if (currentMonth !== null && weekCount > 0) {
-    headers.push({
-      name: monthNames[currentMonth],
-      weeks: weekCount
+    const yearSuffix = year !== currentYear ? ` ${year}` : ''
+    months.push({
+      key: `${year}-${month}`,
+      label: `${MONTH_NAMES[month]}${yearSuffix}`,
+      year,
+      month,
+      startOffset,
+      days
     })
   }
-  
-  return headers
+
+  return months
 })
 
-const secondSemesterHeaders = computed(() => {
-  if (!weeklyData.value || weeklyData.value.length === 0) return []
-  
-  const headers = []
-  let currentMonth = null
-  let weekCount = 0
-  
-  // Analyser les 26 dernières semaines (semaines 26-51)
-  for (let weekIndex = 26; weekIndex < 52 && weekIndex < weeklyData.value.length; weekIndex++) {
-    const week = weeklyData.value[weekIndex]
-    const firstDayOfWeek = week.find(day => day && day.date)
-    
-    if (firstDayOfWeek) {
-      const date = new Date(firstDayOfWeek.date)
-      const month = date.getMonth()
-      
-      if (currentMonth !== month) {
-        if (currentMonth !== null && weekCount > 0) {
-          headers.push({
-            name: monthNames[currentMonth],
-            weeks: weekCount
-          })
-        }
-        currentMonth = month
-        weekCount = 1
-      } else {
-        weekCount++
-      }
-    }
-  }
-  
-  // Ajouter le dernier mois
-  if (currentMonth !== null && weekCount > 0) {
-    headers.push({
-      name: monthNames[currentMonth],
-      weeks: weekCount
-    })
-  }
-  
-  return headers
-})
-
-const firstSemesterTitle = computed(() => {
-  if (!firstSemesterData.value.length) return ''
-  
-  const firstWeek = firstSemesterData.value[0]
-  const lastWeek = firstSemesterData.value[firstSemesterData.value.length - 1]
-  
-  const startDate = firstWeek.find(day => day && day.date)?.date
-  const endDate = lastWeek.find(day => day && day.date)?.date
-  
-  if (startDate && endDate) {
-    const start = new Date(startDate).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })
-    const end = new Date(endDate).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })
-    return `${start} - ${end}`
-  }
-  return 'Premier semestre'
-})
-
-const secondSemesterTitle = computed(() => {
-  if (!secondSemesterData.value.length) return ''
-  
-  const firstWeek = secondSemesterData.value[0]
-  const lastWeek = secondSemesterData.value[secondSemesterData.value.length - 1]
-  
-  const startDate = firstWeek.find(day => day && day.date)?.date
-  const endDate = lastWeek.find(day => day && day.date)?.date
-  
-  if (startDate && endDate) {
-    const start = new Date(startDate).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })
-    const end = new Date(endDate).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })
-    return `${start} - ${end}`
-  }
-  return 'Second semestre'
-})
-
-const getActivityIcon = (activityType) => {
-  return activityIcons[activityType] || GenericIcon
-}
-
-const getDayClasses = (day) => {
-  if (!day) return 'bg-gray-100 dark:bg-gray-800 opacity-30'
-  
-  if (day.count === 0) {
-    return 'bg-gray-200 dark:bg-gray-700'
-  } else {
-    return 'bg-strava hover:bg-orange-600'
-  }
+const getActivityColor = (type) => {
+  if (!type) return ACTIVITY_COLORS['default']
+  return ACTIVITY_COLORS[type] || ACTIVITY_COLORS['default']
 }
 
 const getDayTooltip = (day) => {
-  if (!day) return ''
-  
-  const date = new Date(day.date).toLocaleDateString('fr-FR', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
+  const dateObj = new Date(day.date + 'T12:00:00')
+  const dateLabel = dateObj.toLocaleDateString('fr-FR', {
+    weekday: 'long', day: 'numeric', month: 'long'
   })
-  
-  if (day.count === 0) {
-    return `${date} - Aucune activité`
-  }
-  
-  const activities = day.activities.map(a => `${a.type}: ${a.distance}km`).join(', ')
-  return `${date} - ${day.count} activité(s): ${activities}`
+  if (day.count === 0) return `${dateLabel} — Aucune activité`
+  const list = day.activities
+    .map(a => `${a.type}${a.distance ? ` (${a.distance} km)` : ''}`)
+    .join(', ')
+  return `${dateLabel} — ${day.count} activité(s) : ${list}`
 }
+
+// Légende : types réellement présents dans les 6 derniers mois, triés par fréquence
+const legendItems = computed(() => {
+  const typeCounts = {}
+  const sixMonthsAgo = new Date()
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+
+  props.yearlyActivities?.forEach(a => {
+    if (new Date(a.date) >= sixMonthsAgo) {
+      a.activities?.forEach(act => {
+        typeCounts[act.type] = (typeCounts[act.type] || 0) + 1
+      })
+    }
+  })
+
+  return Object.entries(typeCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([type]) => ({
+      type,
+      label: ACTIVITY_LABELS[type] || type,
+      color: getActivityColor(type)
+    }))
+})
 </script>

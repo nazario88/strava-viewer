@@ -8,7 +8,6 @@
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { Chart, registerables } from 'chart.js'
 
-// Enregistrer tous les composants Chart.js
 Chart.register(...registerables)
 
 const props = defineProps({
@@ -21,10 +20,21 @@ const props = defineProps({
 const chartCanvas = ref(null)
 let chartInstance = null
 
-const createChart = async () => {
-  if (!chartCanvas.value || !props.weeklyDistances.labels) return
+const generateWeekLabels = () => {
+  const labels = []
+  for (let i = 11; i >= 0; i--) {
+    if (i === 0) {
+      labels.push('Cette sem.')
+    } else {
+      labels.push(`S-${i}`)
+    }
+  }
+  return labels
+}
 
-  // Détruire le graphique existant si il existe
+const createChart = async () => {
+  if (!chartCanvas.value || !props.weeklyDistances?.data) return
+
   if (chartInstance) {
     chartInstance.destroy()
     chartInstance = null
@@ -33,11 +43,12 @@ const createChart = async () => {
   await nextTick()
 
   const ctx = chartCanvas.value.getContext('2d')
-  
+  const labels = generateWeekLabels()
+
   chartInstance = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: props.weeklyDistances.labels,
+      labels,
       datasets: [{
         label: 'Distance (km)',
         data: props.weeklyDistances.data,
@@ -58,33 +69,24 @@ const createChart = async () => {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: {
-          display: false
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (context) => `Distance : ${context.raw} km`
+          }
         }
       },
       scales: {
         x: {
-          grid: {
-            display: false
-          },
-          ticks: {
-            font: {
-              size: 12
-            }
-          }
+          grid: { display: false },
+          ticks: { font: { size: 11 } }
         },
         y: {
           beginAtZero: true,
-          grid: {
-            color: 'rgba(0, 0, 0, 0.1)'
-          },
+          grid: { color: 'rgba(0, 0, 0, 0.07)' },
           ticks: {
-            font: {
-              size: 12
-            },
-            callback: function(value) {
-              return value + ' km'
-            }
+            font: { size: 11 },
+            callback: (value) => `${value} km`
           }
         }
       },
@@ -103,16 +105,8 @@ const destroyChart = () => {
   }
 }
 
-// Watcher pour recréer le graphique quand les données changent
-watch(() => props.weeklyDistances, () => {
-  createChart()
-}, { deep: true })
+watch(() => props.weeklyDistances, () => { createChart() }, { deep: true })
 
-onMounted(() => {
-  createChart()
-})
-
-onUnmounted(() => {
-  destroyChart()
-})
+onMounted(() => { createChart() })
+onUnmounted(() => { destroyChart() })
 </script>

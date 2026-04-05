@@ -8,7 +8,6 @@
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { Chart, registerables } from 'chart.js'
 
-// Enregistrer tous les composants Chart.js
 Chart.register(...registerables)
 
 const props = defineProps({
@@ -21,24 +20,36 @@ const props = defineProps({
 const chartCanvas = ref(null)
 let chartInstance = null
 
-// Palette de couleurs pour les différentes activités
-const colors = [
-  '#FC4C02', // Strava Orange
-  '#FF6B35', // Orange clair
-  '#F7931E', // Orange-jaune
-  '#FFD23F', // Jaune
-  '#06D6A0', // Turquoise
-  '#118AB2', // Bleu
-  '#073B4C', // Bleu foncé
-  '#9D4EDD', // Violet
-  '#F72585', // Rose
-  '#4CC9F0'  // Bleu ciel
-]
+const ACTIVITY_COLORS = {
+  'Run':              '#FC4C02',
+  'TrailRun':         '#E03D00',
+  'VirtualRun':       '#FF6B35',
+  'Ride':             '#22C55E',
+  'VirtualRide':      '#16A34A',
+  'MountainBikeRide': '#15803D',
+  'GravelRide':       '#4ADE80',
+  'Swim':             '#02B1FC',
+  'OpenWaterSwim':    '#0284C7',
+  'Walk':             '#A78BFA',
+  'Hike':             '#7C3AED',
+  'WeightTraining':   '#F59E0B',
+  'Workout':          '#D97706',
+  'Yoga':             '#FCD34D',
+  'default':          '#9CA3AF'
+}
+
+const getActivityColor = (type) => {
+  return ACTIVITY_COLORS[type] || ACTIVITY_COLORS['default']
+}
+
+// Lire la couleur du texte selon le thème courant
+const getLegendTextColor = () => {
+  return document.documentElement.classList.contains('dark') ? '#D1D5DB' : '#6B7280'
+}
 
 const createChart = async () => {
   if (!chartCanvas.value || Object.keys(props.activityDistribution).length === 0) return
 
-  // Détruire le graphique existant si il existe
   if (chartInstance) {
     chartInstance.destroy()
     chartInstance = null
@@ -47,21 +58,22 @@ const createChart = async () => {
   await nextTick()
 
   const ctx = chartCanvas.value.getContext('2d')
-  
   const labels = Object.keys(props.activityDistribution)
   const data = Object.values(props.activityDistribution)
-  
+  const backgroundColors = labels.map(label => getActivityColor(label))
+  const legendColor = getLegendTextColor()
+
   chartInstance = new Chart(ctx, {
     type: 'doughnut',
     data: {
-      labels: labels,
+      labels,
       datasets: [{
-        data: data,
-        backgroundColor: colors.slice(0, labels.length),
-        borderColor: '#ffffff',
+        data,
+        backgroundColor: backgroundColors,
+        borderColor: document.documentElement.classList.contains('dark') ? '#1F2937' : '#ffffff',
         borderWidth: 2,
         hoverBorderWidth: 3,
-        hoverOffset: 4
+        hoverOffset: 6
       }]
     },
     options: {
@@ -71,41 +83,38 @@ const createChart = async () => {
         legend: {
           position: 'bottom',
           labels: {
-            padding: 20,
-            font: {
-              size: 12
-            },
-            generateLabels: function(chart) {
-              const data = chart.data
-              if (data.labels.length && data.datasets.length) {
-                return data.labels.map(function(label, i) {
-                  const dataset = data.datasets[0]
-                  const value = dataset.data[i]
-                  const percentage = ((value / data.datasets[0].data.reduce((a, b) => a + b, 0)) * 100).toFixed(1)
-                  
-                  return {
-                    text: `${label} (${percentage}%)`,
-                    fillStyle: dataset.backgroundColor[i],
-                    strokeStyle: dataset.borderColor,
-                    lineWidth: dataset.borderWidth,
-                    fontColor: '#6B7280',
-                    hidden: false,
-                    index: i
-                  }
-                })
-              }
-              return []
+            padding: 16,
+            font: { size: 12 },
+            color: legendColor,
+            generateLabels: (chart) => {
+              const { labels: chartLabels, datasets } = chart.data
+              if (!chartLabels?.length || !datasets?.length) return []
+
+              const total = datasets[0].data.reduce((a, b) => a + b, 0)
+
+              return chartLabels.map((label, i) => {
+                const value = datasets[0].data[i]
+                const percentage = ((value / total) * 100).toFixed(1)
+                return {
+                  text: `${label} (${percentage}%)`,
+                  fillStyle: datasets[0].backgroundColor[i],
+                  strokeStyle: document.documentElement.classList.contains('dark') ? '#1F2937' : '#ffffff',
+                  lineWidth: 2,
+                  fontColor: legendColor,
+                  color: legendColor,
+                  hidden: false,
+                  index: i
+                }
+              })
             }
           }
         },
         tooltip: {
           callbacks: {
-            label: function(context) {
-              const label = context.label || ''
-              const value = context.raw
+            label: (context) => {
               const total = context.dataset.data.reduce((a, b) => a + b, 0)
-              const percentage = ((value / total) * 100).toFixed(1)
-              return `${label}: ${value} activités (${percentage}%)`
+              const percentage = ((context.raw / total) * 100).toFixed(1)
+              return `${context.label} : ${context.raw} activités (${percentage}%)`
             }
           }
         }
@@ -122,16 +131,21 @@ const destroyChart = () => {
   }
 }
 
-// Watcher pour recréer le graphique quand les données changent
-watch(() => props.activityDistribution, () => {
-  createChart()
-}, { deep: true })
+watch(() => props.activityDistribution, () => { createChart() }, { deep: true })
+
+// Observer les changements de thème pour recréer le graphique avec les bonnes couleurs
+const themeObserver = new MutationObserver(() => { createChart() })
 
 onMounted(() => {
   createChart()
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class']
+  })
 })
 
 onUnmounted(() => {
   destroyChart()
+  themeObserver.disconnect()
 })
 </script>

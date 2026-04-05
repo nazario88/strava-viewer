@@ -22,9 +22,11 @@
       />
     </div>
 
+    <!-- Objectif annuel -->
+    <YearlyGoal :yearly-distance="yearlyDistance" />
+
     <!-- Graphiques -->
     <div class="space-y-8">
-      <!-- Première ligne - graphiques existants -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <ChartContainer title="Distance par semaine (12 dernières semaines)">
           <WeeklyChart :weekly-distances="weeklyDistances" />
@@ -35,7 +37,6 @@
         </ChartContainer>
       </div>
 
-      <!-- Deuxième ligne - nouveaux graphiques -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <ChartContainer title="Distance mensuelle (12 derniers mois)">
           <MonthlyChart :monthly-distances="monthlyDistances" />
@@ -57,35 +58,18 @@ import WeeklyChart from './charts/WeeklyChart.vue'
 import DistributionChart from './charts/DistributionChart.vue'
 import MonthlyChart from './charts/MonthlyChart.vue'
 import ActivityHeatmap from './charts/ActivityHeatmap.vue'
+import YearlyGoal from './YearlyGoal.vue'
 
 const props = defineProps({
-  yearlyDistance: {
-    type: Number,
-    required: true
-  },
-  monthlyActivities: {
-    type: Number,
-    required: true
-  },
-  activityDistribution: {
-    type: Object,
-    required: true
-  },
-  weeklyDistances: {
-    type: Object,
-    required: true
-  },
-  monthlyDistances: {
-    type: Object,
-    required: true
-  },
-  yearlyActivities: {
-    type: Array,
-    required: true
-  }
+  yearlyDistance: { type: Number, required: true },
+  monthlyActivities: { type: Number, required: true },
+  activityDistribution: { type: Object, required: true },
+  weeklyDistances: { type: Object, required: true },
+  monthlyDistances: { type: Object, required: true },
+  yearlyActivities: { type: Array, required: true }
 })
 
-const totalActivities = computed(() => {
-  return Object.values(props.activityDistribution).reduce((a, b) => a + b, 0)
-})
+const totalActivities = computed(() =>
+  Object.values(props.activityDistribution).reduce((a, b) => a + b, 0)
+)
 </script>

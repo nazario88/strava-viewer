@@ -12,10 +12,15 @@
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Error Display -->
-      <ErrorComponent v-if="error" :error="error" />
+      <ErrorComponent
+        v-if="error"
+        :error="error"
+        @retry="loadUserData"
+        @disconnect="disconnect"
+      />
 
       <!-- Loading Spinner -->
-      <LoadingComponent v-else-if="isLoading" />
+      <LoadingComponent v-else-if="isLoading" :message="loadingMessage" />
 
       <!-- Authorization Page -->
       <AuthorizationPage 
@@ -33,27 +38,36 @@
         :monthly-distances="monthlyDistances" 
         :yearly-activities="yearlyActivities"
       />
-
     </main>
 
     <!-- Footer -->
-    <FooterComponent></FooterComponent>
+    <FooterComponent />
+
+    <!-- Bouton flottant partage -->
+    <ShareButton
+      :is-authenticated="isAuthenticated"
+      :athlete-name="athlete ? `${athlete.firstname} ${athlete.lastname}` : ''"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, onMounted } from 'vue'
 import HeaderComponent from './components/HeaderComponent.vue'
 import FooterComponent from './components/FooterComponent.vue'
 import ErrorComponent from './components/ErrorComponent.vue'
 import LoadingComponent from './components/LoadingComponent.vue'
 import AuthorizationPage from './components/AuthorizationPage.vue'
 import DashboardComponent from './components/DashboardComponent.vue'
+import ShareButton from './components/ShareButton.vue'
 
 // État de l'application
 const isAuthenticated = ref(false)
 const isLoading = ref(false)
+const loadingMessage = ref('Chargement en cours...')
 const accessToken = ref(null)
+const refreshToken = ref(null)
+const tokenExpiresAt = ref(null)
 const athlete = ref(null)
 const activities = ref([])
 const error = ref(null)
@@ -70,12 +84,62 @@ const monthlyDistances = ref({ labels: [], data: [] })
 const yearlyActivities = ref([])  
 const activityDistribution = ref({})
 
-// URLs dynamiques
-//const stravaAuthUrl = `https://www.strava.com/oauth/authorize?client_id=${STRAVA_CLIENT_ID}&response_type=code&redirect_uri=${redirectUri}&approval_prompt=force&scope=read,activity:read_all`
 const redirectUri = 'https://strava.dailyheroes.io'
 const stravaAuthUrl = `https://www.strava.com/oauth/authorize?client_id=${STRAVA_CLIENT_ID}&response_type=code&redirect_uri=${redirectUri}&approval_prompt=force&scope=read,activity:read_all`
 
-// Vérifier si on revient de l'auth Strava
+// ─── Token management ─────────────────────────────────────────────────────────
+
+const saveTokens = (data) => {
+  accessToken.value = data.access_token
+  refreshToken.value = data.refresh_token
+  tokenExpiresAt.value = data.expires_at // timestamp UNIX en secondes
+
+  localStorage.setItem('strava_access_token', data.access_token)
+  localStorage.setItem('strava_refresh_token', data.refresh_token)
+  localStorage.setItem('strava_token_expires_at', data.expires_at)
+}
+
+const loadTokensFromStorage = () => {
+  accessToken.value = localStorage.getItem('strava_access_token')
+  refreshToken.value = localStorage.getItem('strava_refresh_token')
+  tokenExpiresAt.value = parseInt(localStorage.getItem('strava_token_expires_at') || '0', 10)
+}
+
+const isTokenExpired = () => {
+  if (!tokenExpiresAt.value) return true
+  // On anticipe de 5 minutes pour éviter les appels en limite
+  const nowSeconds = Math.floor(Date.now() / 1000)
+  return nowSeconds >= tokenExpiresAt.value - 300
+}
+
+const refreshAccessToken = async () => {
+  if (!refreshToken.value) throw new Error('Pas de refresh token disponible')
+
+  const response = await fetch('/api/auth.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken.value
+    })
+  })
+
+  const data = await response.json()
+  if (!data.access_token) throw new Error('Échec du refresh token')
+
+  saveTokens(data)
+}
+
+// Retourne un token valide, en rafraîchissant si nécessaire
+const getValidToken = async () => {
+  if (isTokenExpired()) {
+    await refreshAccessToken()
+  }
+  return accessToken.value
+}
+
+// ─── Auth callback ─────────────────────────────────────────────────────────────
+
 const checkAuthCallback = async () => {
   const urlParams = new URLSearchParams(window.location.search)
   const code = urlParams.get('code')
@@ -84,15 +148,13 @@ const checkAuthCallback = async () => {
     await exchangeCodeForToken(code)
     window.history.replaceState({}, document.title, window.location.pathname)
   } else {
-    const savedToken = localStorage.getItem('strava_access_token')
-    if (savedToken) {
-      accessToken.value = savedToken
+    loadTokensFromStorage()
+    if (accessToken.value) {
       await loadUserData()
     }
   }
 }
 
-// Échanger le code contre un access token
 const exchangeCodeForToken = async (code) => {
   isLoading.value = true
   error.value = null
@@ -100,103 +162,123 @@ const exchangeCodeForToken = async (code) => {
   try {
     const response = await fetch('/api/auth.php', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        code: code
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, grant_type: 'authorization_code' })
     })
 
     const data = await response.json()
-    
-    if (data.access_token) {
-      accessToken.value = data.access_token
-      localStorage.setItem('strava_access_token', data.access_token)
-      await loadUserData()
-    } else {
-      throw new Error('Échec de l\'authentification')
-    }
+    if (!data.access_token) throw new Error('Échec de l\'authentification')
+
+    saveTokens(data)
+    await loadUserData()
   } catch (err) {
-    error.value = 'Erreur lors de l\'authentification: ' + err.message
+    error.value = 'Erreur lors de l\'authentification : ' + err.message
   } finally {
     isLoading.value = false
   }
 }
 
-// Charger les données utilisateur
+// ─── Data loading ──────────────────────────────────────────────────────────────
+
 const loadUserData = async () => {
   isLoading.value = true
-  
+  loadingMessage.value = 'Connexion à Strava...'
+
   try {
-    // Récupérer les infos de l'athlète
+    const token = await getValidToken()
+
+    // Infos de l'athlète
     const athleteResponse = await fetch('https://www.strava.com/api/v3/athlete', {
-      headers: {
-        'Authorization': `Bearer ${accessToken.value}`
-      }
+      headers: { 'Authorization': `Bearer ${token}` }
     })
+    if (!athleteResponse.ok) throw new Error('Token invalide')
     athlete.value = await athleteResponse.json()
 
-    // Récupérer les activités (limitées aux 200 dernières)
-    const activitiesResponse = await fetch('https://www.strava.com/api/v3/athlete/activities?per_page=200', {
-      headers: {
-        'Authorization': `Bearer ${accessToken.value}`
-      }
-    })
-    activities.value = await activitiesResponse.json()
+    // Chargement paginé de toutes les activités
+    activities.value = await fetchAllActivities(token)
 
     isAuthenticated.value = true
     calculateStatistics()
   } catch (err) {
-    error.value = 'Erreur lors du chargement des données: ' + err.message
-    setTimeout(disconnect(), 3000)
+    error.value = 'Erreur lors du chargement des données : ' + err.message
+    //setTimeout(() => disconnect(), 3000)
   } finally {
     isLoading.value = false
+    loadingMessage.value = 'Chargement en cours...'
   }
 }
 
-// Calculer les statistiques
+// Pagination : charge toutes les activités page par page
+const fetchAllActivities = async (token) => {
+  const allActivities = []
+  let page = 1
+  const perPage = 200
+
+  while (true) {
+    loadingMessage.value = `Chargement des activités... (${allActivities.length} récupérées)`
+
+    const response = await fetch(
+      `https://www.strava.com/api/v3/athlete/activities?per_page=${perPage}&page=${page}`,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    )
+
+    if (!response.ok) throw new Error(`Erreur API Strava (page ${page})`)
+
+    const pageData = await response.json()
+
+    // Strava retourne un tableau vide quand il n'y a plus de données
+    if (!Array.isArray(pageData) || pageData.length === 0) break
+
+    allActivities.push(...pageData)
+
+    // Si on reçoit moins que perPage, c'est la dernière page
+    if (pageData.length < perPage) break
+
+    page++
+  }
+
+  return allActivities
+}
+
+// ─── Statistics ────────────────────────────────────────────────────────────────
+
 const calculateStatistics = () => {
   const currentYear = new Date().getFullYear()
   const currentMonth = new Date().getMonth()
   
-  // Distance totale sur l'année
   yearlyDistance.value = activities.value
-    .filter(activity => new Date(activity.start_date).getFullYear() === currentYear)
-    .reduce((total, activity) => total + activity.distance, 0) / 1000 // Conversion en km
+    .filter(a => new Date(a.start_date).getFullYear() === currentYear)
+    .reduce((total, a) => total + a.distance, 0) / 1000
 
-  // Nombre d'activités ce mois
   monthlyActivities.value = activities.value
-    .filter(activity => {
-      const activityDate = new Date(activity.start_date)
-      return activityDate.getFullYear() === currentYear && 
-             activityDate.getMonth() === currentMonth
+    .filter(a => {
+      const d = new Date(a.start_date)
+      return d.getFullYear() === currentYear && d.getMonth() === currentMonth
     }).length
 
-  // Calculer toutes les métriques
   calculateWeeklyDistances()
   calculateMonthlyDistances()
   calculateYearlyActivities()
 
-  // Répartition des activités
   const distribution = {}
-  activities.value.forEach(activity => {
-    const type = activity.sport_type || activity.type
+  activities.value.forEach(a => {
+    const type = a.sport_type || a.type
     distribution[type] = (distribution[type] || 0) + 1
   })
   activityDistribution.value = distribution
 }
 
-// Se connecter à Strava
 const connectToStrava = () => {
-  //window.location.href = stravaAuthUrl.value
   window.location.href = stravaAuthUrl
 }
 
-// Se déconnecter
 const disconnect = () => {
   localStorage.removeItem('strava_access_token')
+  localStorage.removeItem('strava_refresh_token')
+  localStorage.removeItem('strava_token_expires_at')
   accessToken.value = null
+  refreshToken.value = null
+  tokenExpiresAt.value = null
   isAuthenticated.value = false
   athlete.value = null
   activities.value = []
@@ -206,9 +288,11 @@ const disconnect = () => {
   monthlyDistances.value = []
   yearlyActivities.value = []
   activityDistribution.value = {}
+  error.value = null
 }
 
-// Gestion du thème
+// ─── Theme ─────────────────────────────────────────────────────────────────────
+
 const toggleTheme = () => {
   isDarkMode.value = !isDarkMode.value
   localStorage.setItem('theme_preference', isDarkMode.value ? 'dark' : 'light')
@@ -220,11 +304,12 @@ const loadThemePreference = () => {
   if (saved) {
     isDarkMode.value = saved === 'dark'
   } else {
-    // Détecter la préférence système
     isDarkMode.value = window.matchMedia('(prefers-color-scheme: dark)').matches
   }
   document.documentElement.classList.toggle('dark', isDarkMode.value)
 }
+
+// ─── Chart calculations ────────────────────────────────────────────────────────
 
 const calculateMonthlyDistances = () => {
   const months = []
@@ -238,11 +323,11 @@ const calculateMonthlyDistances = () => {
     const month = date.getMonth()
     
     const monthDistance = activities.value
-      .filter(activity => {
-        const activityDate = new Date(activity.start_date)
-        return activityDate.getFullYear() === year && activityDate.getMonth() === month
+      .filter(a => {
+        const d = new Date(a.start_date)
+        return d.getFullYear() === year && d.getMonth() === month
       })
-      .reduce((total, activity) => total + activity.distance, 0) / 1000
+      .reduce((total, a) => total + a.distance, 0) / 1000
 
     months.push(monthNames[month])
     monthlyData.push(monthDistance.toFixed(1))
@@ -252,46 +337,48 @@ const calculateMonthlyDistances = () => {
 }
 
 const calculateWeeklyDistances = () => {
-  const weeks = []
+  const weeksLabels = []
   const weeklyData = []
   
   for (let i = 11; i >= 0; i--) {
-    const weekStart = new Date()
-    weekStart.setDate(weekStart.getDate() - (i * 7))
-    weekStart.setHours(0, 0, 0, 0)
-    
-    const weekEnd = new Date(weekStart)
-    weekEnd.setDate(weekEnd.getDate() + 6)
-    weekEnd.setHours(23, 59, 59, 999)
+    const now = new Date()
+    const dayOfWeek = now.getDay()
+    const diffToMonday = (dayOfWeek === 0 ? -6 : 1 - dayOfWeek)
+
+    const weekMonday = new Date(now)
+    weekMonday.setDate(now.getDate() + diffToMonday - (i * 7))
+    weekMonday.setHours(0, 0, 0, 0)
+
+    const weekSunday = new Date(weekMonday)
+    weekSunday.setDate(weekMonday.getDate() + 6)
+    weekSunday.setHours(23, 59, 59, 999)
 
     const weekDistance = activities.value
-      .filter(activity => {
-        const activityDate = new Date(activity.start_date)
-        return activityDate >= weekStart && activityDate <= weekEnd
+      .filter(a => {
+        const d = new Date(a.start_date)
+        return d >= weekMonday && d <= weekSunday
       })
-      .reduce((total, activity) => total + activity.distance, 0) / 1000
+      .reduce((total, a) => total + a.distance, 0) / 1000
 
-    weeks.push(`Sem ${52 - i}`)
+    weeksLabels.push(i === 0 ? 'Cette sem.' : `S-${i}`)
     weeklyData.push(weekDistance.toFixed(1))
   }
   
-  weeklyDistances.value = { labels: weeks, data: weeklyData }
+  weeklyDistances.value = { labels: weeksLabels, data: weeklyData }
 }
 
 const calculateYearlyActivities = () => {
   const currentYear = new Date().getFullYear()
   const yearActivities = []
   
-  // Générer tous les jours de l'année
   for (let month = 0; month < 12; month++) {
     const daysInMonth = new Date(currentYear, month + 1, 0).getDate()
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(currentYear, month, day)
       const dateStr = date.toISOString().split('T')[0]
       
-      // Trouver les activités pour cette date
-      const dayActivities = activities.value.filter(activity => {
-        const activityDate = new Date(activity.start_date).toISOString().split('T')[0]
+      const dayActivities = activities.value.filter(a => {
+        const activityDate = new Date(a.start_date).toISOString().split('T')[0]
         return activityDate === dateStr
       })
       
@@ -309,7 +396,8 @@ const calculateYearlyActivities = () => {
   yearlyActivities.value = yearActivities
 }
 
-// Initialisation
+// ─── Init ──────────────────────────────────────────────────────────────────────
+
 onMounted(() => {
   loadThemePreference()
   checkAuthCallback()
