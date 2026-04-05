@@ -88,7 +88,7 @@
     </div>
 
     <!-- Mode édition inline -->
-    <div v-if="isEditing" class="flex items-center gap-3">
+    <div v-if="isEditing" class="flex flex-wrap items-center gap-2">
       <div class="p-2 rounded-lg bg-strava/10 text-strava flex-shrink-0">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -97,7 +97,7 @@
       </div>
 
       <div class="flex items-center gap-2 flex-1">
-        <label class="text-sm font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap transition-colors">
+        <label class="text-sm font-medium text-gray-600 dark:text-gray-300 transition-colors">
           Objectif annuel :
         </label>
         <input
@@ -114,7 +114,7 @@
         <span class="text-sm text-gray-500 dark:text-gray-400">km</span>
       </div>
 
-      <div class="flex items-center gap-1 flex-shrink-0">
+      <div class="flex items-center gap-1">
         <!-- Valider -->
         <button
           @click="confirmEdit"
