@@ -368,20 +368,27 @@ const calculateWeeklyDistances = () => {
 }
 
 const calculateYearlyActivities = () => {
-  const currentYear = new Date().getFullYear()
+  const today = new Date()
   const yearActivities = []
-  
-  for (let month = 0; month < 12; month++) {
-    const daysInMonth = new Date(currentYear, month + 1, 0).getDate()
+
+  // Couvre les 6 derniers mois glissants (aligné avec la heatmap)
+  const start = new Date(today.getFullYear(), today.getMonth() - 5, 1)
+
+  for (let ref = new Date(start); ref <= today; ref.setMonth(ref.getMonth() + 1)) {
+    const year = ref.getFullYear()
+    const month = ref.getMonth()
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+
     for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(currentYear, month, day)
-      const dateStr = date.toISOString().split('T')[0]
-      
+      const date = new Date(year, month, day)
+      if (date > today) break
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+
       const dayActivities = activities.value.filter(a => {
         const activityDate = new Date(a.start_date).toISOString().split('T')[0]
         return activityDate === dateStr
       })
-      
+
       yearActivities.push({
         date: dateStr,
         count: dayActivities.length,
@@ -392,7 +399,7 @@ const calculateYearlyActivities = () => {
       })
     }
   }
-  
+
   yearlyActivities.value = yearActivities
 }
 
