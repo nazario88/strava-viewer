@@ -5,7 +5,8 @@
         <div class="flex items-center min-w-0 flex-1">
           <div class="flex flex-col sm:flex-row sm:items-center sm:gap-3">
             <h1 class="flex items-center text-lg sm:text-2xl font-bold transition-colors" :class="isDarkMode ? 'text-white' : 'text-gray-900'">
-              <img src="/analytics.png" alt="Visualisation de statistiques" /> Strava Analytics
+              <LogoIcon class="w-6 h-6 sm:w-7 sm:h-7 text-strava mr-2 flex-shrink-0" />
+              <span>Strava</span><span class="text-strava ml-1.5">Analytics</span>
             </h1>
             <a 
               href="https://dailyheroes.io" 
@@ -93,6 +94,7 @@
 import { ref } from 'vue'
 import SunIcon from './icons/SunIcon.vue'
 import MoonIcon from './icons/MoonIcon.vue'
+import LogoIcon from './icons/LogoIcon.vue'
 
 defineProps({
   isAuthenticated: {

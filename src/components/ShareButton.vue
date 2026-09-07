@@ -53,20 +53,68 @@
 <script setup>
 import { ref } from 'vue'
 
-const props = defineProps({
+defineProps({
   isAuthenticated: {
     type: Boolean,
     default: false
-  },
-  athleteName: {
-    type: String,
-    default: ''
   }
 })
+
+const SITE_URL = 'strava.dailyheroes.io'
+const CAPTURE_SCALE = 2
 
 const isCapturing = ref(false)
 const showTooltip = ref(false)
 const tooltipText = ref('Télécharger en PNG')
+
+// Ajoute un bandeau signé sous la capture.
+// Le header n'est volontairement pas capturé (il affiche le prénom et le nom),
+// donc sans ce bandeau l'image partagée ne renvoie nulle part.
+const addBrandingBand = (source) => {
+  const bandHeight = 72 * CAPTURE_SCALE
+  const isDark = document.documentElement.classList.contains('dark')
+
+  const output = document.createElement('canvas')
+  output.width = source.width
+  output.height = source.height + bandHeight
+
+  const ctx = output.getContext('2d')
+
+  ctx.fillStyle = isDark ? '#111827' : '#fdf5ef'
+  ctx.fillRect(0, 0, output.width, output.height)
+  ctx.drawImage(source, 0, 0)
+
+  // Filet de séparation
+  ctx.fillStyle = isDark ? '#374151' : '#e5e7eb'
+  ctx.fillRect(0, source.height, output.width, CAPTURE_SCALE)
+
+  const centerY = source.height + bandHeight / 2
+  const title = 'Strava Analytics'
+  const separator = '   ·   '
+
+  ctx.textBaseline = 'middle'
+  ctx.textAlign = 'left'
+  ctx.font = `600 ${20 * CAPTURE_SCALE}px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`
+
+  // Mesure d'abord pour centrer l'ensemble titre + séparateur + URL.
+  const titleWidth = ctx.measureText(title).width
+  const separatorWidth = ctx.measureText(separator).width
+  const urlWidth = ctx.measureText(SITE_URL).width
+  let x = (output.width - (titleWidth + separatorWidth + urlWidth)) / 2
+
+  ctx.fillStyle = isDark ? '#F9FAFB' : '#111827'
+  ctx.fillText(title, x, centerY)
+  x += titleWidth
+
+  ctx.fillStyle = isDark ? '#4B5563' : '#9CA3AF'
+  ctx.fillText(separator, x, centerY)
+  x += separatorWidth
+
+  ctx.fillStyle = '#FC4C02'
+  ctx.fillText(SITE_URL, x, centerY)
+
+  return output
+}
 
 const captureAndDownload = async () => {
   if (isCapturing.value) return
@@ -84,23 +132,20 @@ const captureAndDownload = async () => {
       backgroundColor: document.documentElement.classList.contains('dark')
         ? '#111827'
         : '#fdf5ef',
-      scale: 2,           // Haute résolution
+      scale: CAPTURE_SCALE,
       useCORS: true,      // Pour les images cross-origin (avatar Strava)
       allowTaint: false,
       logging: false,
-      removeContainer: true,
-      // Ignorer le bouton flottant lui-même
-      ignoreElements: (el) => el.classList?.contains('share-button-ignore')
+      removeContainer: true
     })
 
-    // Télécharger
-    const link = document.createElement('a')
-    const athleteSuffix = props.athleteName
-      ? `-${props.athleteName.toLowerCase().replace(/\s+/g, '-')}`
-      : ''
+    const branded = addBrandingBand(canvas)
+
+    // Nom de fichier neutre : le fichier circule, il ne doit pas porter d'identité.
     const date = new Date().toISOString().split('T')[0]
-    link.download = `strava-stats${athleteSuffix}-${date}.png`
-    link.href = canvas.toDataURL('image/png', 1.0)
+    const link = document.createElement('a')
+    link.download = `strava-analytics-${date}.png`
+    link.href = branded.toDataURL('image/png', 1.0)
     link.click()
 
     tooltipText.value = '✓ Téléchargé !'

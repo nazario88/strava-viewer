@@ -7,6 +7,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { Chart, registerables } from 'chart.js'
+import { hexToRgba } from '../../activityTypes'
 
 Chart.register(...registerables)
 
@@ -14,6 +15,11 @@ const props = defineProps({
   weeklyDistances: {
     type: Object,
     required: true
+  },
+  // Couleur du sport filtré, pour que le graphe et les chips concordent.
+  color: {
+    type: String,
+    default: '#FC4C02'
   }
 })
 
@@ -52,13 +58,13 @@ const createChart = async () => {
       datasets: [{
         label: 'Distance (km)',
         data: props.weeklyDistances.data,
-        borderColor: '#FC4C02',
-        backgroundColor: 'rgba(252, 76, 2, 0.1)',
+        borderColor: props.color,
+        backgroundColor: hexToRgba(props.color, 0.1),
         tension: 0.4,
         fill: true,
-        pointBackgroundColor: '#FC4C02',
-        pointBorderColor: '#FC4C02',
-        pointHoverBackgroundColor: '#FC4C02',
+        pointBackgroundColor: props.color,
+        pointBorderColor: props.color,
+        pointHoverBackgroundColor: props.color,
         pointHoverBorderColor: '#ffffff',
         pointHoverBorderWidth: 2,
         pointRadius: 4,
@@ -105,7 +111,7 @@ const destroyChart = () => {
   }
 }
 
-watch(() => props.weeklyDistances, () => { createChart() }, { deep: true })
+watch([() => props.weeklyDistances, () => props.color], () => { createChart() }, { deep: true })
 
 onMounted(() => { createChart() })
 onUnmounted(() => { destroyChart() })

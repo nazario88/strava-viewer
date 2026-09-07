@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Variante pleine du logo : les barres en trait fin du header
+       deviendraient illisibles à 16px. -->
+  <rect x="4"  y="18" width="6" height="9"  rx="3" fill="#FC4C02"/>
+  <rect x="13" y="11" width="6" height="16" rx="3" fill="#FC4C02"/>
+  <rect x="22" y="5"  width="6" height="22" rx="3" fill="#FC4C02"/>
+</svg>

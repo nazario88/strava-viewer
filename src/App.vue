@@ -26,33 +26,39 @@
       <AuthorizationPage 
         v-else-if="!isAuthenticated"
         @connect-to-strava="connectToStrava"
+        @view-demo="enterDemo"
       />
 
       <!-- Dashboard -->
-      <DashboardComponent 
-        v-else
-        :yearly-distance="yearlyDistance"
-        :monthly-activities="monthlyActivities"
-        :activity-distribution="activityDistribution"
-        :weekly-distances="weeklyDistances"
-        :monthly-distances="monthlyDistances" 
-        :yearly-activities="yearlyActivities"
-      />
+      <div v-else>
+        <DemoBanner v-if="isDemo" @connect-to-strava="connectToStrava" />
+
+        <DashboardComponent
+          :yearly-distance="yearlyDistance"
+          :monthly-activities="monthlyActivities"
+          :total-activities="totalActivities"
+          :activity-distribution="activityDistribution"
+          :weekly-distances="weeklyDistances"
+          :monthly-distances="monthlyDistances"
+          :yearly-activities="yearlyActivities"
+          :regularity="regularity"
+          :available-sports="availableSports"
+          :selected-sport="selectedSport"
+          @update:selected-sport="selectedSport = $event"
+        />
+      </div>
     </main>
 
     <!-- Footer -->
     <FooterComponent />
 
     <!-- Bouton flottant partage -->
-    <ShareButton
-      :is-authenticated="isAuthenticated"
-      :athlete-name="athlete ? `${athlete.firstname} ${athlete.lastname}` : ''"
-    />
+    <ShareButton :is-authenticated="isAuthenticated" />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import HeaderComponent from './components/HeaderComponent.vue'
 import FooterComponent from './components/FooterComponent.vue'
 import ErrorComponent from './components/ErrorComponent.vue'
@@ -60,6 +66,8 @@ import LoadingComponent from './components/LoadingComponent.vue'
 import AuthorizationPage from './components/AuthorizationPage.vue'
 import DashboardComponent from './components/DashboardComponent.vue'
 import ShareButton from './components/ShareButton.vue'
+import DemoBanner from './components/DemoBanner.vue'
+import { generateDemoActivities, DEMO_ATHLETE } from './demoData'
 
 // État de l'application
 const isAuthenticated = ref(false)
@@ -72,6 +80,8 @@ const athlete = ref(null)
 const activities = ref([])
 const error = ref(null)
 const isDarkMode = ref(false)
+const isDemo = ref(false)
+const selectedSport = ref('all')
 
 // Configuration Strava
 const STRAVA_CLIENT_ID = import.meta.env.VITE_STRAVA_CLIENT_ID
@@ -79,10 +89,13 @@ const STRAVA_CLIENT_ID = import.meta.env.VITE_STRAVA_CLIENT_ID
 // Données pour les graphiques
 const yearlyDistance = ref(0)
 const monthlyActivities = ref(0)
+const totalActivities = ref(0)
 const weeklyDistances = ref([])
 const monthlyDistances = ref({ labels: [], data: [] })
 const yearlyActivities = ref([])  
+const REGULARITY_INIT = () => ({ weeks: [], activeWeeks: 0, totalWeeks: 12, currentStreak: 0, bestStreak: 0, averageGapDays: null })
 const activityDistribution = ref({})
+const regularity = ref(REGULARITY_INIT())
 
 const redirectUri = 'https://strava.dailyheroes.io'
 const stravaAuthUrl = `https://www.strava.com/oauth/authorize?client_id=${STRAVA_CLIENT_ID}&response_type=code&redirect_uri=${redirectUri}&approval_prompt=force&scope=read,activity:read_all`
@@ -147,6 +160,8 @@ const checkAuthCallback = async () => {
   if (code) {
     await exchangeCodeForToken(code)
     window.history.replaceState({}, document.title, window.location.pathname)
+  } else if (urlParams.has('demo')) {
+    enterDemo()
   } else {
     loadTokensFromStorage()
     if (accessToken.value) {
@@ -186,6 +201,7 @@ const loadUserData = async () => {
 
   try {
     const token = await getValidToken()
+    isDemo.value = false
 
     // Infos de l'athlète
     const athleteResponse = await fetch('https://www.strava.com/api/v3/athlete', {
@@ -242,23 +258,47 @@ const fetchAllActivities = async (token) => {
 
 // ─── Statistics ────────────────────────────────────────────────────────────────
 
+// Activités du sport sélectionné. Toutes les statistiques de distance en
+// dépendent : additionner des kilomètres de course et de natation n'a pas de
+// sens. Seule la répartition (donut) reste calculée sur la totalité.
+const filteredActivities = computed(() => {
+  if (selectedSport.value === 'all') return activities.value
+  return activities.value.filter(a => (a.sport_type || a.type) === selectedSport.value)
+})
+
+// Sports réellement pratiqués, du plus fréquent au moins fréquent.
+const availableSports = computed(() => {
+  const counts = {}
+  activities.value.forEach(a => {
+    const type = a.sport_type || a.type
+    counts[type] = (counts[type] || 0) + 1
+  })
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([type]) => type)
+})
+
 const calculateStatistics = () => {
   const currentYear = new Date().getFullYear()
   const currentMonth = new Date().getMonth()
-  
-  yearlyDistance.value = activities.value
+  const scoped = filteredActivities.value
+
+  yearlyDistance.value = scoped
     .filter(a => new Date(a.start_date).getFullYear() === currentYear)
     .reduce((total, a) => total + a.distance, 0) / 1000
 
-  monthlyActivities.value = activities.value
+  monthlyActivities.value = scoped
     .filter(a => {
       const d = new Date(a.start_date)
       return d.getFullYear() === currentYear && d.getMonth() === currentMonth
     }).length
 
+  totalActivities.value = scoped.length
+
   calculateWeeklyDistances()
   calculateMonthlyDistances()
   calculateYearlyActivities()
+  calculateRegularity()
 
   const distribution = {}
   activities.value.forEach(a => {
@@ -266,6 +306,22 @@ const calculateStatistics = () => {
     distribution[type] = (distribution[type] || 0) + 1
   })
   activityDistribution.value = distribution
+}
+
+// Changer de sport ne declenche aucun appel reseau : tout est recalcule en memoire.
+watch(selectedSport, () => {
+  if (isAuthenticated.value) calculateStatistics()
+})
+
+const enterDemo = () => {
+  error.value = null
+  isDemo.value = true
+  athlete.value = DEMO_ATHLETE
+  activities.value = generateDemoActivities()
+  isAuthenticated.value = true
+  calculateStatistics()
+  // URL partageable et indexable, sans polluer l'historique de navigation.
+  window.history.replaceState({}, document.title, '?demo=1')
 }
 
 const connectToStrava = () => {
@@ -284,11 +340,20 @@ const disconnect = () => {
   activities.value = []
   yearlyDistance.value = 0
   monthlyActivities.value = 0
-  weeklyDistances.value = []
-  monthlyDistances.value = []
+  totalActivities.value = 0
+  weeklyDistances.value = { labels: [], data: [] }
+  monthlyDistances.value = { labels: [], data: [] }
   yearlyActivities.value = []
   activityDistribution.value = {}
+  regularity.value = REGULARITY_INIT()
   error.value = null
+
+  // Sortie du mode démo : on retire aussi le ?demo=1 de l'URL.
+  if (isDemo.value) {
+    window.history.replaceState({}, document.title, window.location.pathname)
+  }
+  isDemo.value = false
+  selectedSport.value = 'all'
 }
 
 // ─── Theme ─────────────────────────────────────────────────────────────────────
@@ -322,7 +387,7 @@ const calculateMonthlyDistances = () => {
     const year = date.getFullYear()
     const month = date.getMonth()
     
-    const monthDistance = activities.value
+    const monthDistance = filteredActivities.value
       .filter(a => {
         const d = new Date(a.start_date)
         return d.getFullYear() === year && d.getMonth() === month
@@ -336,35 +401,94 @@ const calculateMonthlyDistances = () => {
   monthlyDistances.value = { labels: months, data: monthlyData }
 }
 
+const WEEKS_WINDOW = 12
+
+// Bornes lundi → dimanche de la semaine décalée de `weeksAgo` (0 = semaine en
+// cours). Factorisé : le graphe hebdomadaire et la carte de régularité doivent
+// découper les semaines exactement de la même façon.
+const getWeekBounds = (weeksAgo) => {
+  const now = new Date()
+  const dayOfWeek = now.getDay()
+  const diffToMonday = (dayOfWeek === 0 ? -6 : 1 - dayOfWeek)
+
+  const monday = new Date(now)
+  monday.setDate(now.getDate() + diffToMonday - (weeksAgo * 7))
+  monday.setHours(0, 0, 0, 0)
+
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  sunday.setHours(23, 59, 59, 999)
+
+  return { monday, sunday }
+}
+
+const activitiesInWeek = (weeksAgo) => {
+  const { monday, sunday } = getWeekBounds(weeksAgo)
+  return filteredActivities.value.filter(a => {
+    const d = new Date(a.start_date)
+    return d >= monday && d <= sunday
+  })
+}
+
 const calculateWeeklyDistances = () => {
   const weeksLabels = []
   const weeklyData = []
-  
-  for (let i = 11; i >= 0; i--) {
-    const now = new Date()
-    const dayOfWeek = now.getDay()
-    const diffToMonday = (dayOfWeek === 0 ? -6 : 1 - dayOfWeek)
 
-    const weekMonday = new Date(now)
-    weekMonday.setDate(now.getDate() + diffToMonday - (i * 7))
-    weekMonday.setHours(0, 0, 0, 0)
-
-    const weekSunday = new Date(weekMonday)
-    weekSunday.setDate(weekMonday.getDate() + 6)
-    weekSunday.setHours(23, 59, 59, 999)
-
-    const weekDistance = activities.value
-      .filter(a => {
-        const d = new Date(a.start_date)
-        return d >= weekMonday && d <= weekSunday
-      })
+  for (let i = WEEKS_WINDOW - 1; i >= 0; i--) {
+    const weekDistance = activitiesInWeek(i)
       .reduce((total, a) => total + a.distance, 0) / 1000
 
     weeksLabels.push(i === 0 ? 'Cette sem.' : `S-${i}`)
     weeklyData.push(weekDistance.toFixed(1))
   }
-  
+
   weeklyDistances.value = { labels: weeksLabels, data: weeklyData }
+}
+
+// Mesure l'assiduité plutôt que le volume : c'est l'angle du produit.
+const calculateRegularity = () => {
+  // Nombre de séances par semaine, de la plus ancienne à la semaine en cours.
+  const weeks = []
+  for (let i = WEEKS_WINDOW - 1; i >= 0; i--) {
+    weeks.push(activitiesInWeek(i).length)
+  }
+
+  const activeWeeks = weeks.filter(count => count > 0).length
+
+  // Série en cours. La semaine courante n'est pas terminée : si elle est encore
+  // vide un lundi matin, on ne casse pas la série pour autant.
+  let currentStreak = 0
+  const lastIndex = weeks.length - 1
+  let cursor = weeks[lastIndex] > 0 ? lastIndex : lastIndex - 1
+  while (cursor >= 0 && weeks[cursor] > 0) {
+    currentStreak++
+    cursor--
+  }
+
+  let bestStreak = 0
+  let run = 0
+  for (const count of weeks) {
+    run = count > 0 ? run + 1 : 0
+    if (run > bestStreak) bestStreak = run
+  }
+
+  // Écart moyen entre deux séances consécutives sur la fenêtre.
+  const { monday: windowStart } = getWeekBounds(WEEKS_WINDOW - 1)
+  const dates = filteredActivities.value
+    .map(a => new Date(a.start_date))
+    .filter(d => d >= windowStart)
+    .sort((a, b) => a - b)
+
+  let averageGapDays = null
+  if (dates.length > 1) {
+    let totalDays = 0
+    for (let i = 1; i < dates.length; i++) {
+      totalDays += (dates[i] - dates[i - 1]) / 86400000
+    }
+    averageGapDays = totalDays / (dates.length - 1)
+  }
+
+  regularity.value = { weeks, activeWeeks, totalWeeks: WEEKS_WINDOW, currentStreak, bestStreak, averageGapDays }
 }
 
 const calculateYearlyActivities = () => {
@@ -384,7 +508,7 @@ const calculateYearlyActivities = () => {
       if (date > today) break
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 
-      const dayActivities = activities.value.filter(a => {
+      const dayActivities = filteredActivities.value.filter(a => {
         const activityDate = new Date(a.start_date).toISOString().split('T')[0]
         return activityDate === dateStr
       })

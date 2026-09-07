@@ -76,6 +76,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { getActivityColor, getActivityLabel } from '../../activityTypes'
 
 const props = defineProps({
   yearlyActivities: {
@@ -86,40 +87,6 @@ const props = defineProps({
 
 const DAY_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
 
-const ACTIVITY_COLORS = {
-  'Run':              '#FC4C02',
-  'TrailRun':         '#E03D00',
-  'VirtualRun':       '#FF6B35',
-  'Ride':             '#22C55E',
-  'VirtualRide':      '#16A34A',
-  'MountainBikeRide': '#15803D',
-  'GravelRide':       '#4ADE80',
-  'Swim':             '#02B1FC',
-  'OpenWaterSwim':    '#0284C7',
-  'Walk':             '#A78BFA',
-  'Hike':             '#7C3AED',
-  'WeightTraining':   '#F59E0B',
-  'Workout':          '#D97706',
-  'Yoga':             '#FCD34D',
-  'default':          '#9CA3AF'
-}
-
-const ACTIVITY_LABELS = {
-  'Run':              'Course',
-  'TrailRun':         'Trail',
-  'VirtualRun':       'Course virtuelle',
-  'Ride':             'Vélo',
-  'VirtualRide':      'Vélo virtuel',
-  'MountainBikeRide': 'VTT',
-  'GravelRide':       'Gravel',
-  'Swim':             'Natation',
-  'OpenWaterSwim':    'Nage en eau libre',
-  'Walk':             'Marche',
-  'Hike':             'Randonnée',
-  'WeightTraining':   'Musculation',
-  'Workout':          'Entraînement',
-  'Yoga':             'Yoga',
-}
 
 const MONTH_NAMES = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -183,10 +150,6 @@ const calendarMonths = computed(() => {
   return months
 })
 
-const getActivityColor = (type) => {
-  if (!type) return ACTIVITY_COLORS['default']
-  return ACTIVITY_COLORS[type] || ACTIVITY_COLORS['default']
-}
 
 const getDayTooltip = (day) => {
   const dateObj = new Date(day.date + 'T12:00:00')
@@ -218,7 +181,7 @@ const legendItems = computed(() => {
     .sort((a, b) => b[1] - a[1])
     .map(([type]) => ({
       type,
-      label: ACTIVITY_LABELS[type] || type,
+      label: getActivityLabel(type),
       color: getActivityColor(type)
     }))
 })
