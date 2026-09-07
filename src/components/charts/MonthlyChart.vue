@@ -7,6 +7,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { Chart, registerables } from 'chart.js'
+import { hexToRgba } from '../../activityTypes'
 
 Chart.register(...registerables)
 
@@ -14,6 +15,10 @@ const props = defineProps({
   monthlyDistances: {
     type: Object,
     required: true
+  },
+  color: {
+    type: String,
+    default: '#FC4C02'
   }
 })
 
@@ -23,7 +28,6 @@ let chartInstance = null
 const createChart = async () => {
   // Ajoutez cette vérification
   if (!chartCanvas.value || !props.monthlyDistances || !props.monthlyDistances.labels || props.monthlyDistances.labels.length === 0) {
-    console.log('MonthlyChart: Pas de données disponibles')
     return
   }
 
@@ -43,8 +47,8 @@ const createChart = async () => {
       datasets: [{
         label: 'Distance (km)',
         data: props.monthlyDistances.data,
-        backgroundColor: 'rgba(252, 76, 2, 0.8)',
-        borderColor: '#FC4C02',
+        backgroundColor: hexToRgba(props.color, 0.8),
+        borderColor: props.color,
         borderWidth: 1,
         borderRadius: 4,
         borderSkipped: false,
@@ -106,7 +110,7 @@ const destroyChart = () => {
   }
 }
 
-watch(() => props.monthlyDistances, () => {
+watch([() => props.monthlyDistances, () => props.color], () => {
   createChart()
 }, { deep: true })
 

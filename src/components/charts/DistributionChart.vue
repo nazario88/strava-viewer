@@ -7,6 +7,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { Chart, registerables } from 'chart.js'
+import { getActivityColor, getActivityLabel } from '../../activityTypes'
 
 Chart.register(...registerables)
 
@@ -20,27 +21,6 @@ const props = defineProps({
 const chartCanvas = ref(null)
 let chartInstance = null
 
-const ACTIVITY_COLORS = {
-  'Run':              '#FC4C02',
-  'TrailRun':         '#E03D00',
-  'VirtualRun':       '#FF6B35',
-  'Ride':             '#22C55E',
-  'VirtualRide':      '#16A34A',
-  'MountainBikeRide': '#15803D',
-  'GravelRide':       '#4ADE80',
-  'Swim':             '#02B1FC',
-  'OpenWaterSwim':    '#0284C7',
-  'Walk':             '#A78BFA',
-  'Hike':             '#7C3AED',
-  'WeightTraining':   '#F59E0B',
-  'Workout':          '#D97706',
-  'Yoga':             '#FCD34D',
-  'default':          '#9CA3AF'
-}
-
-const getActivityColor = (type) => {
-  return ACTIVITY_COLORS[type] || ACTIVITY_COLORS['default']
-}
 
 // Lire la couleur du texte selon le thème courant
 const getLegendTextColor = () => {
@@ -96,7 +76,7 @@ const createChart = async () => {
                 const value = datasets[0].data[i]
                 const percentage = ((value / total) * 100).toFixed(1)
                 return {
-                  text: `${label} (${percentage}%)`,
+                  text: `${getActivityLabel(label)} (${percentage}%)`,
                   fillStyle: datasets[0].backgroundColor[i],
                   strokeStyle: document.documentElement.classList.contains('dark') ? '#1F2937' : '#ffffff',
                   lineWidth: 2,
@@ -114,7 +94,7 @@ const createChart = async () => {
             label: (context) => {
               const total = context.dataset.data.reduce((a, b) => a + b, 0)
               const percentage = ((context.raw / total) * 100).toFixed(1)
-              return `${context.label} : ${context.raw} activités (${percentage}%)`
+              return `${getActivityLabel(context.label)} : ${context.raw} activités (${percentage}%)`
             }
           }
         }
